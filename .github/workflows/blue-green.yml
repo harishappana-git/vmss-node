@@ -1,0 +1,58 @@
+name: Build and Deploy to Azure App Service (Blue-Green)
+
+on:
+  push:
+    branches: [codex/build-online-shopping-app-with-node.js]
+  workflow_dispatch:
+
+env:
+  ACR_LOGIN_SERVER: ${{ secrets.ACR_LOGIN_SERVER }}
+  IMAGE_NAME: online-shopping-app
+  RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
+  WEBAPP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}
+  SLOT_NAME: green
+  IMAGE_TAG: ${{ github.sha }}
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+      - run: npm install
+
+      - run: docker build -t $ACR_LOGIN_SERVER/$IMAGE_NAME:$IMAGE_TAG .
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - run: az acr login --name $ACR_LOGIN_SERVER
+      - run: docker push $ACR_LOGIN_SERVER/$IMAGE_NAME:$IMAGE_TAG
+      - run: |
+          az webapp config container set \
+            --name $WEBAPP_NAME \
+            --resource-group $RESOURCE_GROUP \
+            --slot $SLOT_NAME \
+            --docker-custom-image-name $ACR_LOGIN_SERVER/$IMAGE_NAME:$IMAGE_TAG \
+            --docker-registry-server-url https://$ACR_LOGIN_SERVER
+      - run: |
+          az webapp config appsettings set \
+            --name $WEBAPP_NAME \
+            --resource-group $RESOURCE_GROUP \
+            --slot $SLOT_NAME \
+            --settings WEBSITES_PORT=3000
+      - name: Health check
+        run: |
+          for i in {1..10}; do
+            if curl -fs "https://${WEBAPP_NAME}-${SLOT_NAME}.azurewebsites.net/health"; then
+              echo "Healthy" && break
+            fi
+            echo "Waiting for container..." && sleep 10
+          done
+      - run: |
+          az webapp deployment slot swap \
+            --resource-group $RESOURCE_GROUP \
+            --name $WEBAPP_NAME \
+            --slot $SLOT_NAME \
+            --target-slot prod
