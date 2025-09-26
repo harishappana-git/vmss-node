@@ -76,7 +76,11 @@ This repository provides an end-to-end Azure Kubernetes Service (AKS) sample tha
 ## Prerequisites
 
 1. **AKS cluster** with the [Azure CNI](https://learn.microsoft.com/azure/aks/configure-azure-cni) plugin enabled.
-2. **Gateway API support** – install the [Azure Application Gateway for Containers](https://learn.microsoft.com/azure/application-gateway/for-containers/overview) (or another Gateway API implementation) and register the `azure-lb` `GatewayClass` (provided in this repo).
+2. **Gateway API support** – install the [Azure Application Gateway for Containers](https://learn.microsoft.com/azure/application-gateway/for-containers/overview) (or another Gateway API implementation) and register the `azure-lb` `GatewayClass` (provided in this repo). If your cluster does not yet have the Gateway API CRDs, install them once before applying the manifests:
+
+   ```bash
+   kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.1.0/standard-install.yaml
+   ```
 3. `kubectl` >= 1.27 and the `kubelogin` Azure CLI plugin if you log in with AAD.
 
 ## Deployment steps
@@ -107,7 +111,7 @@ kubectl apply -f k8s/apps/service-ripley-hazard.yaml
 kubectl apply -f k8s/apps/hpa-ripley-hazard.yaml
 kubectl apply -f k8s/apps/daemonset-node-observer.yaml
 
-# 6. Gateway API exposure
+# 6. Gateway API exposure (after Gateway API CRDs are installed)
 kubectl apply -f k8s/gateway/gatewayclass-azure.yaml
 kubectl apply -f k8s/gateway/gateway-azure.yaml
 kubectl apply -f k8s/gateway/httproute-ripley-hazard.yaml
