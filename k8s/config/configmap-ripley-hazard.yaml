@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ripley-hazard-config
+  namespace: hazard-spots
+  labels:
+    app: ripley-hazard
+    component: frontend
+    project: hazard-spots
+data:
+  LISTEN_ADDR: ":8080"
+  MESSAGE: "Ripley Hazard control console"
+  UPSTREAM_URIS: "http://spots-api.hazard-spots.svc.cluster.local:8080"
+  ENABLE_HTTPS: "false"

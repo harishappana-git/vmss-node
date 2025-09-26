@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: spots-api-config
+  namespace: hazard-spots
+  labels:
+    app: spots-api
+    component: backend
+    project: hazard-spots
+data:
+  LISTEN_ADDR: ":8080"
+  MESSAGE: "Spots API connected to PostgreSQL"
+  DB_HOST: "spots-db.hazard-spots.svc.cluster.local"
+  DB_NAME: "spots"
+  DB_PORT: "5432"
