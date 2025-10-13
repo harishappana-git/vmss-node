@@ -2,9 +2,9 @@ locals {
   common_tags = merge(
     {
       environment = var.environment
-      managed-by  = "terraform"
+      "managed-by" = "terraform"
     },
-    var.tags
+    var.tags,
   )
 }
 
