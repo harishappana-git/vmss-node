@@ -1,10 +1,10 @@
 locals {
   common_tags = merge(
     {
-      "environment" = var.environment
-      "managed-by" = "terraform"
+      environment = var.environment
+      managed-by  = "terraform"
     },
-    var.tags,
+    var.tags
   )
 }
 
@@ -37,35 +37,35 @@ resource "azurerm_storage_account" "diag" {
   location                 = azurerm_resource_group.main.location
   account_tier             = "Standard"
   account_replication_type = "LRS"
-  tags                     = local.common_tags
   allow_nested_items_to_be_public = false
   min_tls_version                  = "TLS1_2"
+  tags                              = local.common_tags
 }
 
 resource "azurerm_key_vault" "main" {
-  name                        = "kv-${random_string.sa.result}"
-  resource_group_name         = azurerm_resource_group.main.name
-  location                    = azurerm_resource_group.main.location
-  tenant_id                   = data.azurerm_client_config.current.tenant_id
-  sku_name                    = "standard"
-  purge_protection_enabled    = true
-  soft_delete_retention_days  = 90
-  enable_rbac_authorization   = true
+  name                          = "kv-${random_string.sa.result}"
+  resource_group_name           = azurerm_resource_group.main.name
+  location                      = azurerm_resource_group.main.location
+  tenant_id                     = data.azurerm_client_config.current.tenant_id
+  sku_name                      = "standard"
+  purge_protection_enabled      = true
+  soft_delete_retention_days    = 90
+  enable_rbac_authorization     = true
   public_network_access_enabled = true
-  tags                        = local.common_tags
+  tags                          = local.common_tags
 }
 
 module "compute" {
-  source                     = "./modules/compute"
-  resource_group_name        = azurerm_resource_group.main.name
-  location                   = azurerm_resource_group.main.location
-  subnet_id                  = module.networking.subnet_ids["vmss"]
-  tags                       = local.common_tags
-  vm_admin_username          = var.vm_admin_username
-  vm_admin_password          = var.vm_admin_password
-  vmss_instance_count        = var.vmss_instance_count
-  sku_name                   = var.sku_name
-  diagnostics_storage_uri    = azurerm_storage_account.diag.primary_blob_endpoint
+  source                  = "./modules/compute"
+  resource_group_name     = azurerm_resource_group.main.name
+  location                = azurerm_resource_group.main.location
+  subnet_id               = module.networking.subnet_ids["vmss"]
+  tags                    = local.common_tags
+  vm_admin_username       = var.vm_admin_username
+  vm_admin_password       = var.vm_admin_password
+  vmss_instance_count     = var.vmss_instance_count
+  sku_name                = var.sku_name
+  diagnostics_storage_uri = azurerm_storage_account.diag.primary_blob_endpoint
 }
 
 resource "azurerm_key_vault_secret" "vm_admin_password" {

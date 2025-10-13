@@ -29,7 +29,7 @@ variable "address_space" {
 variable "subnets" {
   description = "Definition of subnets to create."
   type = map(object({
-    address_prefixes = list(string)
+    address_prefixes  = list(string)
     service_endpoints = optional(list(string), [])
   }))
 }
