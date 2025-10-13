@@ -4,7 +4,7 @@ output "resource_group_name" {
 }
 
 output "vmss_public_ip" {
-  value       = azurerm_public_ip.vmss_pip.ip_address
+  value       = module.compute.public_ip_address
   description = "Public IP address for the VM scale set load balancer."
 }
 

@@ -2,13 +2,12 @@
 
 This repository contains an opinionated Terraform implementation for deploying an Azure Virtual Machine Scale Set (VMSS) landing zone that mirrors how many enterprise teams structure infrastructure-as-code projects. It demonstrates:
 
-- A modular Terraform layout with reusable components (networking, compute, monitoring).
+- A modular Terraform layout with reusable networking and compute components that can be shared across environments.
 - Remote state stored in Azure Storage with state locking.
 - Secure secret storage in Azure Key Vault.
-- Azure Monitor integration via Log Analytics.
-- CI/CD automation with GitHub Actions for plan/apply workflows.
+- CI/CD automation with GitHub Actions for plan/apply workflows that promote from dev to prod.
 
-The solution provisions a resource group, a virtual network, network security controls, a VMSS behind a load balancer, diagnostic storage, and monitoring resources. The VMSS uses a custom script extension to install NGINX and publish a simple landing page for verification.
+The solution provisions a resource group, a virtual network, network security controls, a VMSS behind a load balancer, diagnostic storage, and Key Vault. The VMSS uses a custom script extension to install NGINX and publish a simple landing page for verification.
 
 ## Repository structure
 
@@ -21,12 +20,14 @@ The solution provisions a resource group, a virtual network, network security co
 │   ├── versions.tf            # Terraform and provider constraints
 │   └── modules/
 │       ├── compute/           # VMSS, load balancer, diagnostics
-│       ├── monitoring/        # Log Analytics and action group
 │       └── networking/        # VNet, subnets, NSGs
 ├── environments/
-│   └── dev/
+│   ├── dev/
+│   │   ├── backend.hcl        # Example backend configuration for remote state
+│   │   └── terraform.tfvars   # Example variable file for dev environment
+│   └── prod/
 │       ├── backend.hcl        # Example backend configuration for remote state
-│       └── terraform.tfvars   # Example variable file for dev environment
+│       └── terraform.tfvars   # Example variable file for prod environment
 └── .github/workflows/
     └── terraform.yml          # CI/CD pipeline definition
 ```
@@ -57,13 +58,13 @@ The solution provisions a resource group, a virtual network, network security co
      --auth-mode login
    ```
 
-2. Update `environments/dev/backend.hcl` with the actual storage account name and confirm the blob container exists:
+2. Update each environment backend file with the actual storage account name and confirm the blob container exists. The sample assumes the same storage account with different keys per environment, but you can also dedicate separate accounts if desired.
 
    ```hcl
    resource_group_name  = "rg-terraform-state"
    storage_account_name = "tfstate123456"
    container_name       = "tfstate"
-   key                  = "dev.terraform.tfstate"
+   key                  = "dev.terraform.tfstate" # update to prod.terraform.tfstate for production
    ```
 
    > :warning: Backend files should **never** be committed with live storage account keys. Using `backend.hcl` keeps sensitive data out of the configuration and enables environment-specific settings.
@@ -102,16 +103,18 @@ The solution provisions a resource group, a virtual network, network security co
 
 ## GitHub Actions CI/CD pipeline
 
-The workflow in `.github/workflows/terraform.yml` implements a two-stage pipeline:
+The workflow in `.github/workflows/terraform.yml` implements an environment-aware pipeline:
 
-- **validate** (PRs & pushes): checks formatting, initializes the backend, and runs `terraform validate` and `terraform plan`. Plans run using federated identity with the Azure service principal configured via GitHub secrets.
-- **apply** (main branch only): runs after `validate` passes and requires the `production` environment approval if enabled in the repository. It applies the configuration automatically using the same backend and variable file.
+- **validate** (PRs & pushes): checks formatting and runs `terraform validate`.
+- **plan** (PRs & pushes): executes `terraform init` and `terraform plan` separately for the `dev` and `prod` configurations so reviewers can compare the changes that will land in each environment.
+- **apply-dev** (main branch only): applies the configuration to the dev environment as soon as changes reach `main`.
+- **promote-prod** (main branch only): waits for a manual approval on the protected `production` environment and then applies the configuration with the prod variables and backend. This enables the "deploy to dev, validate, then promote to prod" flow requested.
 
-Because the workflow references `environments/dev/backend.hcl` and `environments/dev/terraform.tfvars`, each environment can have its own directory with tailored `backend.hcl` and `terraform.tfvars` files. This pattern mirrors many enterprise setups where each workspace or stage has isolated state and configuration.
+Because the workflow references the files in `environments/<env>/`, each environment can have its own backend settings, state file, and input variables while reusing the same Terraform code.
 
 ### Required GitHub configuration
 
-1. Configure an environment named `production` (or change the workflow) with required approvers if you want manual gates before apply.
+1. Configure two GitHub environments named `dev` and `production`. Add required approvers to `production` to enforce manual gates before prod apply. (Optional) add approvers to `dev` if you want to pause dev applies as well.
 2. Add the following secrets to the repository or organization:
 
    - `ARM_CLIENT_ID`
@@ -128,7 +131,7 @@ Because the workflow references `environments/dev/backend.hcl` and `environments
 - **State protection**: Enable soft delete and immutable blob policies on the state storage account for recovery.
 - **Tagging**: Extend the `tags` map to enforce organizational tagging standards.
 - **Policy compliance**: Integrate with Azure Policy by assigning initiatives to the resource group or subscription and ensuring Terraform deployments pass policy checks.
-- **Monitoring**: The monitoring module creates an action group shell. Configure email/webhook receivers and alert rules to meet SRE requirements.
+- **Monitoring**: Add monitoring resources (Log Analytics, alerts, dashboards) as needed. The current configuration focuses on networking, compute, diagnostics, and Key Vault to keep the footprint lightweight.
 - **Scaling**: Adjust `vmss_instance_count`, autoscale rules, and VM SKU to meet workload requirements. Add Autoscale settings via `azurerm_monitor_autoscale_setting` as needed.
 
 ## Testing
@@ -138,9 +141,9 @@ Because the workflow references `environments/dev/backend.hcl` and `environments
 
 Both commands are encapsulated in the GitHub Actions workflow and should be executed locally using the steps above before opening a pull request.
 
-## Extending to additional environments
+## Promoting between environments
 
-To spin up staging or production environments, duplicate the `environments/dev` folder (e.g., `environments/prod`) with its own `backend.hcl` and `terraform.tfvars`. Update the workflow to trigger on those files or use input parameters to select the environment dynamically.
+Deployments always land in dev first. After validating the dev environment, approve the pending `promote-prod` job in GitHub Actions to push the same change set to production. If you need to redeploy production later without new commits, re-run the workflow via the **Run workflow** button (enabled by the `workflow_dispatch` trigger) and approve the promotion step when ready.
 
 ## Troubleshooting
 

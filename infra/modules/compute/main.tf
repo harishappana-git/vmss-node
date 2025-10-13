@@ -101,26 +101,3 @@ resource "azurerm_linux_virtual_machine_scale_set" "vmss" {
   tags = var.tags
 }
 
-resource "azurerm_monitor_diagnostic_setting" "vmss" {
-  name                       = "vmss-diagnostics"
-  target_resource_id         = azurerm_linux_virtual_machine_scale_set.vmss.id
-  log_analytics_workspace_id = var.log_analytics_workspace_id
-
-  log {
-    category = "VMInsightsHeartBeat"
-    enabled  = true
-
-    retention_policy {
-      enabled = false
-    }
-  }
-
-  metric {
-    category = "AllMetrics"
-    enabled  = true
-
-    retention_policy {
-      enabled = false
-    }
-  }
-}

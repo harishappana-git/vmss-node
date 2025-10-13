@@ -55,13 +55,6 @@ resource "azurerm_key_vault" "main" {
   tags                        = local.common_tags
 }
 
-module "monitoring" {
-  source              = "./modules/monitoring"
-  resource_group_name = azurerm_resource_group.main.name
-  location            = azurerm_resource_group.main.location
-  tags                = local.common_tags
-}
-
 module "compute" {
   source                     = "./modules/compute"
   resource_group_name        = azurerm_resource_group.main.name
@@ -73,7 +66,6 @@ module "compute" {
   vmss_instance_count        = var.vmss_instance_count
   sku_name                   = var.sku_name
   diagnostics_storage_uri    = azurerm_storage_account.diag.primary_blob_endpoint
-  log_analytics_workspace_id = module.monitoring.log_analytics_workspace_id
 }
 
 resource "azurerm_key_vault_secret" "vm_admin_password" {
