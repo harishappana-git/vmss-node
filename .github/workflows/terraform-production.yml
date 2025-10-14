@@ -27,10 +27,6 @@ jobs:
         working-directory: terraform
 
     env:
-      ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
-      ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
-      ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
-      ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
       TF_VAR_vm_admin_password: ${{ secrets.TF_VAR_vm_admin_password }}
 
     steps:
@@ -45,11 +41,15 @@ jobs:
       - name: Azure Login
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.ARM_CLIENT_ID }}
-          client-secret: ${{ secrets.ARM_CLIENT_SECRET }}
-          tenant-id: ${{ secrets.ARM_TENANT_ID }}
-          subscription-id: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
           enable-AzPSSession: false
+
+      - name: Export Terraform Azure environment variables
+        run: |
+          echo "ARM_CLIENT_ID=$AZURE_CLIENT_ID" >> "$GITHUB_ENV"
+          echo "ARM_CLIENT_SECRET=$AZURE_CLIENT_SECRET" >> "$GITHUB_ENV"
+          echo "ARM_TENANT_ID=$AZURE_TENANT_ID" >> "$GITHUB_ENV"
+          echo "ARM_SUBSCRIPTION_ID=$AZURE_SUBSCRIPTION_ID" >> "$GITHUB_ENV"
 
       - name: Configure backend file
         run: |

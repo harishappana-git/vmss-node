@@ -19,14 +19,15 @@ Before changing infrastructure or merging to `main`, confirm the following are c
    - Azure CLI
 2. **Azure access**
    - Subscription with permissions to create resource groups, networks, network security groups, public IPs, and VMs.
-   - Service principal with at least `Contributor` rights on the subscription. Record its `ARM_CLIENT_ID`, `ARM_CLIENT_SECRET`, `ARM_TENANT_ID`, and `ARM_SUBSCRIPTION_ID`.
+   - Service principal with at least `Contributor` rights on the subscription. Generate an Azure credential JSON (using the `--sdk-auth` flag) that will be stored as a GitHub secret:
      ```bash
      az ad sp create-for-rbac \
        --name "terraform-production-ci" \
        --role Contributor \
-       --scopes "/subscriptions/<subscription-id>"
+       --scopes "/subscriptions/<subscription-id>" \
+       --sdk-auth
      ```
-     Save the generated `appId` (client ID), `password` (client secret), and `tenant` values to configure GitHub secrets. The workflow authenticates with Azure using this client secret—no federated credential configuration is required.
+     Copy the command output and save it as the GitHub secret `AZURE_CREDENTIALS`. The JSON includes the client ID, client secret, tenant ID, and subscription ID. The workflow uses that secret directly with `azure/login`, so no federated credential configuration is required.
 3. **Remote Terraform state storage**
    - Either provision manually or run the helper script:
      ```bash
@@ -39,15 +40,14 @@ Before changing infrastructure or merging to `main`, confirm the following are c
      ```
    - Capture the resulting resource group, storage account, container, and desired state key.
 4. **GitHub repository secrets** (required before the pipeline will succeed)
-   - `ARM_CLIENT_ID`
-   - `ARM_CLIENT_SECRET`
-   - `ARM_TENANT_ID`
-   - `ARM_SUBSCRIPTION_ID`
+   - `AZURE_CREDENTIALS` – The full JSON returned by `az ad sp create-for-rbac ... --sdk-auth`.
    - `TF_BACKEND_RESOURCE_GROUP`
    - `TF_BACKEND_STORAGE_ACCOUNT`
    - `TF_BACKEND_CONTAINER`
    - `TF_BACKEND_STATE_KEY`
    - `TF_VAR_vm_admin_password` (strong password that satisfies Azure requirements)
+
+   To create a secret in GitHub, navigate to **Repository → Settings → Secrets and variables → Actions → New repository secret**. Paste the entire JSON document into the value field when creating `AZURE_CREDENTIALS`.
 
 ## Configure the Terraform Project
 
