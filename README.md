@@ -53,7 +53,7 @@ All environments share a single Azure Storage account that stores the Terraform 
 ```bash
 RESOURCE_GROUP="rg-tfstate-shared"
 LOCATION="eastus"
-STORAGE_ACCOUNT="sttfstategitops"  # must be globally unique
+STORAGE_ACCOUNT="dhaappsstategitops"  # must be globally unique
 
 az group create --name "$RESOURCE_GROUP" --location "$LOCATION"
 az storage account create \
@@ -105,7 +105,7 @@ Add these repository secrets for the workflow to authenticate and configure Terr
 
 - `AZURE_CREDENTIALS` – JSON output from `az ad sp create-for-rbac --sdk-auth`.
 - `TFSTATE_RESOURCE_GROUP` – remote state resource group (`rg-tfstate-shared`).
-- `TFSTATE_STORAGE_ACCOUNT` – storage account name (`sttfstategitops`).
+- `TFSTATE_STORAGE_ACCOUNT` – storage account name (`dhaappsstategitops`).
 - `TFSTATE_CONTAINER` – container name for production (`tfstate-prod`).
 
 Update the workflow environment variable `TF_BACKEND_KEY` if you change the backend key from the default `prod/terraform.tfstate`.
