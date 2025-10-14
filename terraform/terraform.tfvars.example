@@ -1,0 +1,9 @@
+# Copy this file to terraform.tfvars and adjust the values for your environment.
+prefix                = "prod"
+resource_group_name   = "rg-prod-terraform"
+vnet_name             = "prod-vnet"
+subnet_name           = "prod-subnet"
+subnet_address_prefix = "10.10.1.0/24"
+vm_admin_username     = "azureuser"
+vm_admin_ssh_public_key = "ssh-rsa AAAAB3Nza..."
+ssh_allowed_cidr      = "203.0.113.0/24"

@@ -1,0 +1,5 @@
+# Copy this file to backend.hcl and update it with your remote state storage account details.
+resource_group_name  = "rg-tfstate"
+storage_account_name = "sttfstateprod"
+container_name       = "tfstate"
+key                  = "production.terraform.tfstate"
