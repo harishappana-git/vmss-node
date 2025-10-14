@@ -40,14 +40,14 @@ Before changing infrastructure or merging to `main`, confirm the following are c
      ```
    - Capture the resulting resource group, storage account, container, and desired state key.
 4. **GitHub repository secrets** (required before the pipeline will succeed)
-   - `AZURE_CREDENTIALS` – The full JSON returned by `az ad sp create-for-rbac ... --sdk-auth`.
+   - `AZURE_CREDENTIALS` – The full JSON returned by `az ad sp create-for-rbac ... --sdk-auth`. The workflow parses the JSON with `jq` and exports the required `ARM_*` environment variables for Terraform, so no Azure CLI session or federated credentials are needed in CI.
    - `TF_BACKEND_RESOURCE_GROUP`
    - `TF_BACKEND_STORAGE_ACCOUNT`
    - `TF_BACKEND_CONTAINER`
    - `TF_BACKEND_STATE_KEY`
    - `TF_VAR_vm_admin_password` (strong password that satisfies Azure requirements)
 
-   To create a secret in GitHub, navigate to **Repository → Settings → Secrets and variables → Actions → New repository secret**. Paste the entire JSON document into the value field when creating `AZURE_CREDENTIALS`.
+   To create a secret in GitHub, navigate to **Repository → Settings → Secrets and variables → Actions → New repository secret**. Paste the entire JSON document into the value field when creating `AZURE_CREDENTIALS`. Set the backend secrets (`TF_BACKEND_*`) to the exact resource group, storage account, container, and state key values for your remote state (for example, `tfrg`, `dhaappssa`, `tf-state`, and `production.terraform.tfstate`).
 
 ## Configure the Terraform Project
 

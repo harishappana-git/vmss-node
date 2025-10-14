@@ -45,11 +45,17 @@ jobs:
           enable-AzPSSession: false
 
       - name: Export Terraform Azure environment variables
+        env:
+          AZURE_CREDENTIALS_JSON: ${{ secrets.AZURE_CREDENTIALS }}
         run: |
-          echo "ARM_CLIENT_ID=$AZURE_CLIENT_ID" >> "$GITHUB_ENV"
-          echo "ARM_CLIENT_SECRET=$AZURE_CLIENT_SECRET" >> "$GITHUB_ENV"
-          echo "ARM_TENANT_ID=$AZURE_TENANT_ID" >> "$GITHUB_ENV"
-          echo "ARM_SUBSCRIPTION_ID=$AZURE_SUBSCRIPTION_ID" >> "$GITHUB_ENV"
+          cat <<'CREDS' > creds.json
+          ${AZURE_CREDENTIALS_JSON}
+          CREDS
+          echo "ARM_CLIENT_ID=$(jq -r '.clientId' creds.json)" >> "$GITHUB_ENV"
+          echo "ARM_CLIENT_SECRET=$(jq -r '.clientSecret' creds.json)" >> "$GITHUB_ENV"
+          echo "ARM_TENANT_ID=$(jq -r '.tenantId' creds.json)" >> "$GITHUB_ENV"
+          echo "ARM_SUBSCRIPTION_ID=$(jq -r '.subscriptionId' creds.json)" >> "$GITHUB_ENV"
+          rm -f creds.json
 
       - name: Configure backend file
         run: |

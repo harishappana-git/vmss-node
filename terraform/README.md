@@ -30,7 +30,7 @@ Before running Terraform locally **or** merging to `main`, make sure the followi
      --scopes "/subscriptions/<subscription-id>" \
      --sdk-auth
    ```
-   Save the command output verbatim as the repository secret `AZURE_CREDENTIALS`. The JSON includes the client ID, client secret, tenant ID, and subscription ID used by the GitHub Actions workflow.
+   Save the command output verbatim as the repository secret `AZURE_CREDENTIALS`. The workflow parses the JSON with `jq` to export `ARM_CLIENT_ID`, `ARM_CLIENT_SECRET`, `ARM_TENANT_ID`, and `ARM_SUBSCRIPTION_ID` for the Terraform provider, so the CI job does not rely on Azure CLI authentication as a user.
 4. **Remote state storage account** dedicated to Terraform state (recommended production practice).
    - Create a resource group (e.g. `rg-tfstate`).
    - Create a storage account with Standard LRS replication (e.g. `sttfstateprod`).
@@ -121,11 +121,11 @@ The workflow in `.github/workflows/terraform-production.yml` performs the follow
 
 | Secret | Description |
 | --- | --- |
-| `AZURE_CREDENTIALS` | Full JSON output from `az ad sp create-for-rbac ... --sdk-auth`. |
-| `TF_BACKEND_RESOURCE_GROUP` | Resource group that hosts the storage account for the remote state. |
-| `TF_BACKEND_STORAGE_ACCOUNT` | Storage account name that stores the state file. |
-| `TF_BACKEND_CONTAINER` | Blob container name. |
-| `TF_BACKEND_STATE_KEY` | Name of the state file (key). |
+| `AZURE_CREDENTIALS` | Full JSON output from `az ad sp create-for-rbac ... --sdk-auth`. Paste the JSON verbatim; the workflow extracts the fields with `jq`. |
+| `TF_BACKEND_RESOURCE_GROUP` | Resource group that hosts the storage account for the remote state (e.g. `tfrg`). |
+| `TF_BACKEND_STORAGE_ACCOUNT` | Storage account name that stores the state file (e.g. `dhaappssa`). |
+| `TF_BACKEND_CONTAINER` | Blob container name (e.g. `tf-state`). |
+| `TF_BACKEND_STATE_KEY` | Name of the state file/key (e.g. `production.terraform.tfstate`). |
 | `TF_VAR_vm_admin_password` | Strong password for the VM admin user. |
 
 Add the `AZURE_CREDENTIALS` secret by navigating to **Repository → Settings → Secrets and variables → Actions → New repository secret** and pasting the JSON output verbatim.
