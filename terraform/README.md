@@ -23,17 +23,17 @@ Before running Terraform locally **or** merging to `main`, make sure the followi
    - [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli)
 2. **Azure subscription access** with permission to create resource groups, networks, network security groups, public IPs and virtual machines.
 3. **Service principal** with `Contributor` role on the target subscription. Capture the following values for GitHub secrets:
-   - `ARM_CLIENT_ID`
-   - `ARM_CLIENT_SECRET`
-   - `ARM_TENANT_ID`
-   - `ARM_SUBSCRIPTION_ID`
+   - `AZURE_CLIENT_ID`
+   - `AZURE_CLIENT_SECRET`
+   - `AZURE_TENANT_ID`
+   - `AZURE_SUBSCRIPTION_ID`
 4. **Remote state storage account** dedicated to Terraform state (recommended production practice).
    - Create a resource group (e.g. `rg-tfstate`).
    - Create a storage account with Standard LRS replication (e.g. `sttfstateprod`).
    - Create a blob container (e.g. `tfstate`).
    - Decide on a unique key name for the state file (e.g. `production.terraform.tfstate`).
 5. **GitHub Secrets** for CI/CD:
-   - `ARM_CLIENT_ID`, `ARM_CLIENT_SECRET`, `ARM_TENANT_ID`, `ARM_SUBSCRIPTION_ID` (from the service principal).
+   - `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID` (from the service principal).
    - `TF_BACKEND_RESOURCE_GROUP`
    - `TF_BACKEND_STORAGE_ACCOUNT`
    - `TF_BACKEND_CONTAINER`
@@ -117,10 +117,10 @@ The workflow in `.github/workflows/terraform-production.yml` performs the follow
 
 | Secret | Description |
 | --- | --- |
-| `ARM_CLIENT_ID` | Service principal application (client) ID. |
-| `ARM_CLIENT_SECRET` | Service principal client secret. |
-| `ARM_TENANT_ID` | Azure tenant ID for the service principal. |
-| `ARM_SUBSCRIPTION_ID` | Target subscription ID. |
+| `AZURE_CLIENT_ID` | Service principal application (client) ID. |
+| `AZURE_CLIENT_SECRET` | Service principal client secret. |
+| `AZURE_TENANT_ID` | Azure tenant ID for the service principal. |
+| `AZURE_SUBSCRIPTION_ID` | Target subscription ID. |
 | `TF_BACKEND_RESOURCE_GROUP` | Resource group that hosts the storage account for the remote state. |
 | `TF_BACKEND_STORAGE_ACCOUNT` | Storage account name that stores the state file. |
 | `TF_BACKEND_CONTAINER` | Blob container name. |

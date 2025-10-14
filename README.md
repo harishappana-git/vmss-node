@@ -19,7 +19,7 @@ Before changing infrastructure or merging to `main`, confirm the following are c
    - Azure CLI
 2. **Azure access**
    - Subscription with permissions to create resource groups, networks, network security groups, public IPs, and VMs.
-   - Service principal with at least `Contributor` rights on the subscription. Record its `ARM_CLIENT_ID`, `ARM_CLIENT_SECRET`, `ARM_TENANT_ID`, and `ARM_SUBSCRIPTION_ID`.
+   - Service principal with at least `Contributor` rights on the subscription. Record its `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `AZURE_TENANT_ID`, and `AZURE_SUBSCRIPTION_ID`.
 3. **Remote Terraform state storage**
    - Either provision manually or run the helper script:
      ```bash
@@ -32,10 +32,10 @@ Before changing infrastructure or merging to `main`, confirm the following are c
      ```
    - Capture the resulting resource group, storage account, container, and desired state key.
 4. **GitHub repository secrets** (required before the pipeline will succeed)
-   - `ARM_CLIENT_ID`
-   - `ARM_CLIENT_SECRET`
-   - `ARM_TENANT_ID`
-   - `ARM_SUBSCRIPTION_ID`
+   - `AZURE_CLIENT_ID`
+   - `AZURE_CLIENT_SECRET`
+   - `AZURE_TENANT_ID`
+   - `AZURE_SUBSCRIPTION_ID`
    - `TF_BACKEND_RESOURCE_GROUP`
    - `TF_BACKEND_STORAGE_ACCOUNT`
    - `TF_BACKEND_CONTAINER`
