@@ -75,12 +75,8 @@ resource "azurerm_linux_virtual_machine" "vm" {
     azurerm_network_interface.vm.id
   ]
   admin_username                  = var.vm_admin_username
-  disable_password_authentication = true
-
-  admin_ssh_key {
-    username   = var.vm_admin_username
-    public_key = var.vm_admin_ssh_public_key
-  }
+  disable_password_authentication = false
+  admin_password                  = var.vm_admin_password
 
   os_disk {
     caching              = "ReadWrite"

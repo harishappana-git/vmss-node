@@ -10,7 +10,7 @@ The configuration creates the following Azure resources:
 - A virtual network and subnet.
 - A network security group that only allows SSH from a configurable CIDR.
 - A public IP address and network interface.
-- An Ubuntu Linux virtual machine that uses SSH key authentication.
+- An Ubuntu Linux virtual machine that uses local username/password authentication over SSH.
 
 Common production tags are applied to all resources by default.
 
@@ -38,7 +38,28 @@ Before running Terraform locally **or** merging to `main`, make sure the followi
    - `TF_BACKEND_STORAGE_ACCOUNT`
    - `TF_BACKEND_CONTAINER`
    - `TF_BACKEND_STATE_KEY`
-   - `TF_VAR_vm_admin_ssh_public_key` containing the SSH public key you want Terraform to use.
+   - `TF_VAR_vm_admin_password` storing a strong password that satisfies [Azure's complexity requirements](https://learn.microsoft.com/azure/virtual-machines/linux/faq#are-there-any-requirements-for-user-names-or-passwords-when-creating-a-vm-).
+
+## Bootstrap the Remote State Backend
+
+To streamline creation of the storage account that hosts Terraform state, run the helper script from the repository root **after** signing in with the Azure CLI:
+
+```bash
+az login
+./scripts/create-remote-state.sh \
+  <resource-group-name> \
+  <azure-region> \
+  <storage-account-name> \
+  <container-name>
+```
+
+The script is idempotent and will create or update:
+
+1. The resource group.
+2. A Standard LRS storage account.
+3. A blob container for the Terraform state file.
+
+After the script runs, record the values and add them to the GitHub secrets listed above. Use the same values inside `backend.hcl` for local runs.
 
 ## Repository Files
 
@@ -46,7 +67,7 @@ Before running Terraform locally **or** merging to `main`, make sure the followi
 | --- | --- |
 | `providers.tf` | Defines the AzureRM provider, version constraints, and the remote backend block (values supplied at runtime). |
 | `main.tf` | Declares the resource group, networking, NSG rules, and Linux VM resources. |
-| `variables.tf` | Lists configurable inputs. Sensitive values (such as the SSH key) should be passed through variables or secrets. |
+| `variables.tf` | Lists configurable inputs. Sensitive values (such as the admin password) should be passed through variables or secrets. |
 | `outputs.tf` | Provides key outputs after `apply`, such as the VM public IP address. |
 | `terraform.tfvars.example` | Example variable file to copy to `terraform.tfvars` for local usage. |
 | `backend.hcl.example` | Example backend configuration for remote state. Provide the real values via a `backend.hcl` file that is **not** checked into git. |
@@ -59,11 +80,12 @@ Before running Terraform locally **or** merging to `main`, make sure the followi
    cp backend.hcl.example backend.hcl
    # edit backend.hcl with your storage account details
    ```
-2. Copy the variable example and update values for production:
+2. Copy the variable example and update values for production (do **not** commit the resulting file):
    ```bash
    cp terraform.tfvars.example terraform.tfvars
    # edit terraform.tfvars
    ```
+   Ensure `vm_admin_password` is a strong, unique password.
 3. Authenticate with Azure locally:
    ```bash
    az login
@@ -79,7 +101,7 @@ Before running Terraform locally **or** merging to `main`, make sure the followi
    terraform apply
    ```
 
-> **Important:** Keep the SSH public key out of source control. When running in GitHub Actions, the secret `TF_VAR_vm_admin_ssh_public_key` automatically feeds the sensitive variable.
+> **Important:** Never commit real passwords. When running in GitHub Actions, the secret `TF_VAR_vm_admin_password` automatically feeds the sensitive variable at runtime.
 
 ## CI/CD with GitHub Actions
 
@@ -103,13 +125,18 @@ The workflow in `.github/workflows/terraform-production.yml` performs the follow
 | `TF_BACKEND_STORAGE_ACCOUNT` | Storage account name that stores the state file. |
 | `TF_BACKEND_CONTAINER` | Blob container name. |
 | `TF_BACKEND_STATE_KEY` | Name of the state file (key). |
-| `TF_VAR_vm_admin_ssh_public_key` | SSH public key for the VM admin user. |
+| `TF_VAR_vm_admin_password` | Strong password for the VM admin user. |
 
-### Promotion Workflow
+### End-to-End Pipeline Flow
 
-1. Open a pull request targeting `main`. The workflow will run Terraform validation and a `plan`, commenting on the PR with the results.
-2. After approval, merge to `main`. The push trigger runs `terraform apply` automatically, using the remote state.
-3. Monitor the workflow run in GitHub Actions to ensure the deployment succeeded.
+1. **Feature branch work** – Update Terraform files and push to a feature branch.
+2. **Open a pull request** – Target `main`. The workflow performs:
+   - `terraform fmt -check`
+   - `terraform validate`
+   - `terraform plan`
+   The plan output appears in the workflow logs for reviewer approval.
+3. **Merge to `main`** – On merge, the workflow reuses the generated backend file and runs `terraform apply -auto-approve` with the production variables supplied from GitHub secrets.
+4. **Monitor the run** – Confirm the apply succeeded in the Actions tab and optionally verify the new/updated resources in the Azure Portal.
 
 ## Updating the Infrastructure
 
