@@ -1,0 +1,16 @@
+location                    = "eastus"
+resource_group_name         = "rg-gitops-dev"
+virtual_network_name        = "vnet-gitops-dev"
+virtual_network_address_space = ["10.20.0.0/16"]
+subnet_name                 = "snet-gitops-dev"
+subnet_prefix               = "10.20.1.0/24"
+vm_name                     = "vm-gitops-dev"
+vm_size                     = "Standard_B1ms"
+admin_username              = "azureadmin"
+ssh_public_key              = "ssh-rsa AAAAB3Nza..."
+allowed_ssh_cidrs           = ["198.51.100.0/24"]
+enable_public_ip            = false
+tags = {
+  application = "vmss-node"
+  owner       = "platform-team"
+}
