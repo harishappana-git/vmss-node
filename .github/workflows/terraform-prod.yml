@@ -1,0 +1,85 @@
+name: "Terraform - prod"
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'environments/prod/**'
+      - 'modules/**'
+      - '.github/workflows/**'
+      - 'scripts/**'
+      - 'README.md'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'environments/prod/**'
+      - 'modules/**'
+      - '.github/workflows/**'
+      - 'scripts/**'
+      - 'README.md'
+
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: write
+
+env:
+  TF_WORKING_DIR: environments/prod
+  TF_BACKEND_KEY: prod/terraform.tfstate
+
+jobs:
+  terraform:
+    name: Terraform
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.6
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Terraform fmt
+        run: terraform fmt -check -recursive
+
+      - name: Terraform init
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          terraform init \
+            -backend-config="resource_group_name=${{ secrets.TFSTATE_RESOURCE_GROUP }}" \
+            -backend-config="storage_account_name=${{ secrets.TFSTATE_STORAGE_ACCOUNT }}" \
+            -backend-config="container_name=${{ secrets.TFSTATE_CONTAINER }}" \
+            -backend-config="key=${{ env.TF_BACKEND_KEY }}"
+
+      - name: Terraform validate
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform validate
+
+      - name: Terraform plan
+        if: github.event_name == 'pull_request'
+        id: plan
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform plan -input=false -no-color
+
+      - name: Post plan summary
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: terraform-plan-prod
+          message: |
+            ### Terraform Plan (prod)
+            ```
+            ${{ steps.plan.outputs.stdout }}
+            ```
+
+      - name: Terraform apply
+        if: github.event_name == 'push'
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform apply -input=false -auto-approve
