@@ -1,2 +1,11 @@
 node_modules/
 .DS_Store
+# Terraform artifacts
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+terraform.tfvars
+terraform/.terraform/
+terraform/.terraform.*
+terraform/backend.hcl
