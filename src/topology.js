@@ -3,6 +3,16 @@ const MAX_THREADS_PER_BLOCK = 1024;
 const WARPS_PER_BLOCK = MAX_THREADS_PER_BLOCK / WARP_SIZE;
 const BLOCKS_PER_GRID = 16;
 
+export const LEVEL_LABELS = {
+  'distributed-system': 'System',
+  server: 'Server',
+  device: 'GPU',
+  grid: 'Grid',
+  block: 'Block',
+  warp: 'Warp',
+  thread: 'Thread'
+};
+
 const clampCount = (value, max = 512) => Math.max(1, Math.min(Math.round(value), max));
 
 const asPercentage = (value) => `${Math.round(value * 100)}%`;
@@ -232,10 +242,23 @@ const flattenNode = (node, parentId = null, rows = []) => {
   return rows;
 };
 
-export const topologyToCsv = (topology) => {
-  const rows = flattenNode(topology);
+export const findNodeById = (node, id) => {
+  if (!node) return null;
+  if (node.id === id) return node;
+  for (const child of node.children ?? []) {
+    const found = findNodeById(child, id);
+    if (found) return found;
+  }
+  return null;
+};
+
+export const topologyToCsv = (topology, options = {}) => {
+  const { rootId = null, levelType = null } = options;
+  const root = rootId ? findNodeById(topology, rootId) ?? topology : topology;
+  const rows = flattenNode(root);
+  const filteredRows = levelType ? rows.filter((row) => row.type === levelType) : rows;
   const header = 'id,name,type,parent,meta';
-  const body = rows
+  const body = filteredRows
     .map((row) =>
       [row.id, row.name, row.type, row.parent ?? '', row.meta.replace(/"/g, '""')]
         .map((value) => `"${value}"`)

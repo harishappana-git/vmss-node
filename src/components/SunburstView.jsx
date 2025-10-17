@@ -49,11 +49,13 @@ const SunburstView = ({ topology, focusPath, onSelectNode, onHoverNode }) => {
           return (
             <path
               key={`${node.id}-${index}`}
+              className={`sunburst__arc ${isFocused ? 'is-flow' : ''}`}
               d={path}
               fill={color}
               fillOpacity={isFocused ? 0.9 : 0.55}
               stroke="#0d1117"
               strokeWidth={isFocused ? 2 : 1}
+              data-level={node.type}
               onMouseEnter={() => onHoverNode(node)}
               onMouseLeave={() => onHoverNode(null)}
               onClick={() => onSelectNode(node)}

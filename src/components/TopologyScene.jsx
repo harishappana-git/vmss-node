@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import { Canvas } from '@react-three/fiber';
 import { Html, OrbitControls, PerspectiveCamera } from '@react-three/drei';
 
-import { LEVEL_ORDER } from '../topology.js';
+import { LEVEL_ORDER, LEVEL_LABELS } from '../topology.js';
 
 const NODE_COLORS = {
   'distributed-system': '#0b7285',
@@ -13,16 +13,6 @@ const NODE_COLORS = {
   block: '#f2cc60',
   warp: '#bf7af0',
   thread: '#8b949e'
-};
-
-const LEVEL_LABELS = {
-  'distributed-system': 'System',
-  server: 'Servers',
-  device: 'GPUs',
-  grid: 'CUDA Grids',
-  block: 'Blocks',
-  warp: 'Warps',
-  thread: 'Threads'
 };
 
 const collectFocusNodes = (root, focusPath) => {
@@ -62,37 +52,71 @@ const collectLevels = (root, focusNodes) => {
   return levels;
 };
 
-const MatrixCell = ({ node, isActive, isContext, isDescendant, onSelect, onHover }) => (
-  <button
-    type="button"
+const MatrixCell = ({
+  node,
+  isActive,
+  isContext,
+  isDescendant,
+  isFlow,
+  isCompared,
+  onSelect,
+  onHover,
+  onToggleCompare
+}) => (
+  <div
+    role="button"
+    tabIndex={0}
     className={`matrix-cell matrix-${node.type} ${isActive ? 'is-active' : ''} ${
       isDescendant ? 'is-descendant' : ''
-    } ${isContext ? 'is-context' : ''}`.trim()}
+    } ${isContext ? 'is-context' : ''} ${isFlow ? 'is-flow' : ''} ${
+      isCompared ? 'is-compared' : ''
+    }`.trim()}
     style={{ '--node-color': NODE_COLORS[node.type] ?? '#6e7681' }}
     onClick={(event) => {
       event.stopPropagation();
       onSelect(node);
+    }}
+    onKeyDown={(event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        onSelect(node);
+      }
     }}
     onMouseEnter={() => onHover(node)}
     onFocus={() => onHover(node)}
     onMouseLeave={() => onHover(null)}
     onBlur={() => onHover(null)}
   >
-    <span className="matrix-cell__title">{node.name}</span>
+    <header className="matrix-cell__header">
+      <span className="matrix-cell__title">{node.name}</span>
+      <button
+        type="button"
+        className={`matrix-cell__compare ${isCompared ? 'is-selected' : ''}`}
+        onClick={(event) => {
+          event.stopPropagation();
+          onToggleCompare(node.id);
+        }}
+        aria-pressed={isCompared}
+        aria-label={isCompared ? 'Remove from comparison' : 'Add to comparison'}
+      >
+        ↕
+      </button>
+    </header>
     <span className="matrix-cell__meta">{node.meta?.explanation}</span>
     {node.meta && (
       <div className="matrix-cell__stats">
         {Object.entries(node.meta)
           .filter(([key]) => key !== 'explanation')
-          .slice(0, 3)
+          .slice(0, 4)
           .map(([key, value]) => (
             <span key={key}>
-              <strong>{key}</strong>: {value}
+              <strong>{key}</strong>
+              <em>{value}</em>
             </span>
           ))}
       </div>
     )}
-  </button>
+  </div>
 );
 
 MatrixCell.propTypes = {
@@ -100,27 +124,46 @@ MatrixCell.propTypes = {
   isActive: PropTypes.bool,
   isContext: PropTypes.bool,
   isDescendant: PropTypes.bool,
+  isFlow: PropTypes.bool,
+  isCompared: PropTypes.bool,
   onSelect: PropTypes.func.isRequired,
-  onHover: PropTypes.func.isRequired
+  onHover: PropTypes.func.isRequired,
+  onToggleCompare: PropTypes.func.isRequired
 };
 
 MatrixCell.defaultProps = {
   isActive: false,
   isContext: false,
-  isDescendant: false
+  isDescendant: false,
+  isFlow: false,
+  isCompared: false
 };
 
-const LevelMatrix = ({ level, nodes, focusSet, descendantSet, activeId, parentId, onSelect, onHover }) => (
+const LevelMatrix = ({
+  level,
+  nodes,
+  focusSet,
+  descendantSet,
+  flowSet,
+  comparisonSet,
+  activeId,
+  parentId,
+  onSelect,
+  onHover,
+  onToggleCompare
+}) => (
   <div className="matrix">
     <header className="matrix__header">
       <span className="matrix__title">{LEVEL_LABELS[level]} matrix</span>
-      <span className="matrix__subtitle">{nodes.length} {LEVEL_LABELS[level].toLowerCase()}</span>
+      <span className="matrix__subtitle">{nodes.length} {LEVEL_LABELS[level].toLowerCase()} visible</span>
     </header>
     <div className="matrix__grid">
       {nodes.map((node) => {
         const isActive = node.id === activeId;
         const isContext = !isActive && parentId !== null && node.id !== activeId;
         const isDescendant = descendantSet.has(node.id) || focusSet.has(node.id);
+        const isFlow = flowSet.has(node.id);
+        const isCompared = comparisonSet.has(node.id);
         return (
           <MatrixCell
             key={node.id}
@@ -128,8 +171,11 @@ const LevelMatrix = ({ level, nodes, focusSet, descendantSet, activeId, parentId
             isActive={isActive}
             isContext={isContext && !isDescendant}
             isDescendant={isDescendant}
+            isFlow={isFlow}
+            isCompared={isCompared}
             onSelect={onSelect}
             onHover={onHover}
+            onToggleCompare={onToggleCompare}
           />
         );
       })}
@@ -142,10 +188,13 @@ LevelMatrix.propTypes = {
   nodes: PropTypes.arrayOf(PropTypes.object).isRequired,
   focusSet: PropTypes.instanceOf(Set).isRequired,
   descendantSet: PropTypes.instanceOf(Set).isRequired,
+  flowSet: PropTypes.instanceOf(Set).isRequired,
+  comparisonSet: PropTypes.instanceOf(Set).isRequired,
   activeId: PropTypes.string,
   parentId: PropTypes.string,
   onSelect: PropTypes.func.isRequired,
-  onHover: PropTypes.func.isRequired
+  onHover: PropTypes.func.isRequired,
+  onToggleCompare: PropTypes.func.isRequired
 };
 
 LevelMatrix.defaultProps = {
@@ -183,12 +232,14 @@ LevelPlate.propTypes = {
   children: PropTypes.node.isRequired
 };
 
-const Scene = ({ topology, focusPath, onSelectNode, onHoverNode }) => {
+const Scene = ({ topology, focusPath, comparisonIds, onSelectNode, onHoverNode, onToggleCompare }) => {
   const focusNodes = useMemo(() => collectFocusNodes(topology, focusPath), [topology, focusPath]);
   const levels = useMemo(() => collectLevels(topology, focusNodes), [topology, focusNodes]);
   const focusSet = useMemo(() => new Set(focusPath), [focusPath]);
   const activeNode = focusNodes[focusNodes.length - 1];
   const descendantSet = useMemo(() => collectDescendantIds(activeNode), [activeNode]);
+  const flowSet = focusSet;
+  const comparisonSet = useMemo(() => new Set(comparisonIds), [comparisonIds]);
 
   return (
     <Canvas dpr={[1, 2]} shadows>
@@ -204,10 +255,13 @@ const Scene = ({ topology, focusPath, onSelectNode, onHoverNode }) => {
             nodes={level.nodes}
             focusSet={focusSet}
             descendantSet={descendantSet}
+            flowSet={flowSet}
+            comparisonSet={comparisonSet}
             activeId={focusPath[index] ?? null}
             parentId={level.parentId}
             onSelect={onSelectNode}
             onHover={onHoverNode}
+            onToggleCompare={onToggleCompare}
           />
         </LevelPlate>
       ))}
@@ -227,22 +281,33 @@ const Scene = ({ topology, focusPath, onSelectNode, onHoverNode }) => {
 Scene.propTypes = {
   topology: PropTypes.object.isRequired,
   focusPath: PropTypes.arrayOf(PropTypes.string).isRequired,
+  comparisonIds: PropTypes.arrayOf(PropTypes.string).isRequired,
   onSelectNode: PropTypes.func.isRequired,
-  onHoverNode: PropTypes.func.isRequired
+  onHoverNode: PropTypes.func.isRequired,
+  onToggleCompare: PropTypes.func.isRequired
 };
 
-const TopologyScene = ({ topology, focusPath, onSelectNode, onHoverNode }) => {
+const TopologyScene = ({
+  topology,
+  focusPath,
+  comparisonIds,
+  onSelectNode,
+  onHoverNode,
+  onToggleCompare
+}) => {
   const memoisedScene = useMemo(
     () => (
       <Scene
         key={focusPath.join('>')}
         topology={topology}
         focusPath={focusPath}
+        comparisonIds={comparisonIds}
         onSelectNode={onSelectNode}
         onHoverNode={onHoverNode}
+        onToggleCompare={onToggleCompare}
       />
     ),
-    [topology, focusPath, onSelectNode, onHoverNode]
+    [topology, focusPath, comparisonIds, onSelectNode, onHoverNode, onToggleCompare]
   );
 
   return memoisedScene;
@@ -251,8 +316,10 @@ const TopologyScene = ({ topology, focusPath, onSelectNode, onHoverNode }) => {
 TopologyScene.propTypes = {
   topology: PropTypes.object.isRequired,
   focusPath: PropTypes.arrayOf(PropTypes.string).isRequired,
+  comparisonIds: PropTypes.arrayOf(PropTypes.string).isRequired,
   onSelectNode: PropTypes.func.isRequired,
-  onHoverNode: PropTypes.func.isRequired
+  onHoverNode: PropTypes.func.isRequired,
+  onToggleCompare: PropTypes.func.isRequired
 };
 
 export default TopologyScene;

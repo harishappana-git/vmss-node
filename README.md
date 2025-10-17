@@ -34,13 +34,13 @@ An interactive explorer for understanding how distributed AI workloads map from 
 
 ## Exploring the visualisation
 
-- **Spatial matrices** – stacked tables render servers, GPUs, grids, blocks, warps, and threads with colour-coded cards, keeping outer layers present even when you zoom inside.
-- **Breadcrumb navigation** – always-visible breadcrumbs and a dedicated *Show full system* button make it easy to reset or traverse back up.
-- **Hover insights** – hover on any card (or sunburst segment) to surface latency, occupancy, memory, and scheduling metadata. Click to focus a layer.
-- **Performance overlay** – throughput, memory footprint, interconnect bandwidth, and epoch duration update live from your inputs.
-- **Sunburst treemap** – switch to the sunburst view for a compressed representation of the full hierarchy alongside the 3D scene.
-- **Legend & glossary** – colour legend and terminology cheat sheet stay pinned on the right for quick reference.
-- **CSV export** – capture the generated topology (with metadata) as a CSV for notebooks, reports, or sharing.
+- **Spatial matrices with inline metrics** – each level renders as a matrix of colour-coded cards that surface utilisation, memory, and scheduling statistics directly inside the cell. A dynamic data-flow pulse highlights the path of the active batch through the hierarchy.
+- **Context breadcrumbs & mini-map** – breadcrumbs remain clickable for instant jumps, while a collapsible mini-map keeps the full tree visible so you always know where you are and can hop to any ancestor or sibling layer.
+- **Side-by-side table view** – toggle the tabular companion panel to inspect the focused layer as a sortable-style matrix complete with inline metrics, focus shortcuts, and compare toggles.
+- **Layer comparison panel** – pin up to four components (↕) to review their properties side-by-side in the dedicated comparison drawer.
+- **Performance & data exports** – view derived throughput, memory, and bandwidth summaries, and export either the full topology, the current focus subtree, or any specific hierarchy level as CSV.
+- **Sunburst treemap** – switch to the sunburst mode for an information-dense overview; segments that sit on the active path glow to mirror the 3D view.
+- **Legend with tooltips** – hover any legend or glossary entry for inline definitions so domain concepts stay at your fingertips.
 
 ## Notes
 
