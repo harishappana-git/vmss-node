@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import TopologyScene from './components/TopologyScene.jsx';
-import { buildTopology, deriveMetrics } from './topology.js';
+import SunburstView from './components/SunburstView.jsx';
+import { buildTopology, deriveMetrics, topologyToCsv, LEVEL_ORDER } from './topology.js';
 
 const formatNumber = (value) => {
+  if (value >= 1_000_000_000_000) return `${(value / 1_000_000_000_000).toFixed(1)}T`;
   if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)}B`;
   if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
   if (value >= 1_000) return `${(value / 1_000).toFixed(1)}K`;
@@ -20,10 +22,16 @@ const App = () => {
   const [config, setConfig] = useState(INITIAL_CONFIG);
   const topology = useMemo(() => buildTopology(config), [config]);
   const [focusPath, setFocusPath] = useState([topology.id]);
+  const [hoveredNode, setHoveredNode] = useState(null);
+  const [viewMode, setViewMode] = useState('spatial');
 
   useEffect(() => {
     setFocusPath([topology.id]);
-  }, [topology.id]);
+  }, [topology]);
+
+  useEffect(() => {
+    setHoveredNode(null);
+  }, [viewMode, focusPath.join('>')]);
 
   const activeNode = useMemo(() => {
     let current = topology;
@@ -37,8 +45,6 @@ const App = () => {
     }
     return current;
   }, [focusPath, topology]);
-
-  const focusDepth = focusPath.length - 1;
 
   const metrics = useMemo(() => deriveMetrics(config), [config]);
 
@@ -89,11 +95,25 @@ const App = () => {
     });
   };
 
+  const handleResetView = () => {
+    setFocusPath([topology.id]);
+  };
+
+  const handleExportCsv = () => {
+    const csv = topologyToCsv(topology);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'ai-distributed-topology.csv';
+    link.click();
+    URL.revokeObjectURL(link.href);
+  };
+
   return (
     <div className="app-shell">
       <header>
         <h1>AI Distributed Training Stack Explorer</h1>
-        <p style={{ margin: '0.35rem 0 0', color: '#8b949e', maxWidth: '720px' }}>
+        <p className="intro">
           Interactively inspect how dataset sizing, GPU count, and distributed infrastructure shape the CUDA execution
           hierarchy. Click components to zoom into finer-grained levels such as grids, blocks, warps, and threads.
         </p>
@@ -163,57 +183,163 @@ const App = () => {
               </li>
             </ul>
           </div>
-          <div style={{ marginTop: '1.5rem', fontSize: '0.8rem', color: '#6e7681' }}>
-            Tip: start at the distributed system level and progressively drill into servers, GPUs, grids, blocks, warps,
-            and threads to understand how CUDA maps work to hardware.
+
+          <div className="performance">
+            <h3>Performance snapshot</h3>
+            <ul>
+              <li>
+                <span>Throughput</span>
+                <span>{formatNumber(metrics.flops)} FLOPs/s</span>
+              </li>
+              <li>
+                <span>Memory</span>
+                <span>{formatNumber(metrics.memoryGb)} GB</span>
+              </li>
+              <li>
+                <span>Interconnect</span>
+                <span>{formatNumber(metrics.bandwidthGb)} GB/s</span>
+              </li>
+              <li>
+                <span>Epoch time</span>
+                <span>{metrics.epochSeconds.toFixed(2)} s</span>
+              </li>
+            </ul>
           </div>
+
+          <button type="button" className="export-button" onClick={handleExportCsv}>
+            Export topology CSV
+          </button>
         </aside>
-        <div className="canvas-wrapper">
-          <div className="canvas-overlay">
-            <h3>Focus</h3>
-            <p style={{ marginBottom: '0.5rem' }}>
+        <div className="visual-wrapper">
+          <div className="visual-header">
+            <div className="breadcrumb">
               {breadcrumbs.map((crumb, index) => (
                 <React.Fragment key={crumb.id}>
-                  {index > 0 && <span style={{ margin: '0 0.25rem' }}>›</span>}
+                  {index > 0 && <span className="crumb-sep">›</span>}
                   <button
                     type="button"
                     onClick={() => handleBreadcrumbClick(crumb.id)}
-                    style={{
-                      background: 'transparent',
-                      border: 'none',
-                      color: index === breadcrumbs.length - 1 ? '#58a6ff' : '#e6edf3',
-                      cursor: 'pointer',
-                      padding: 0,
-                      font: 'inherit'
-                    }}
+                    className={`crumb ${index === breadcrumbs.length - 1 ? 'is-active' : ''}`}
                   >
                     {crumb.name}
                   </button>
                 </React.Fragment>
               ))}
-            </p>
-            {activeDescription.base && <p style={{ marginBottom: '0.5rem' }}>{activeDescription.base}</p>}
-            {activeDescription.details.length > 0 && (
-              <ul>
-                {activeDescription.details.map((item) => (
-                  <li key={item.key}>
-                    <strong>{item.key}</strong>: {item.value}
-                  </li>
-                ))}
-              </ul>
+            </div>
+            <div className="visual-actions">
+              <div className="view-toggle" role="tablist" aria-label="Visualisation mode">
+                <button
+                  type="button"
+                  className={viewMode === 'spatial' ? 'is-selected' : ''}
+                  onClick={() => setViewMode('spatial')}
+                >
+                  3D spatial
+                </button>
+                <button
+                  type="button"
+                  className={viewMode === 'sunburst' ? 'is-selected' : ''}
+                  onClick={() => setViewMode('sunburst')}
+                >
+                  Sunburst
+                </button>
+              </div>
+              <button type="button" className="reset-button" onClick={handleResetView}>
+                Show full system
+              </button>
+            </div>
+          </div>
+          <div className="context-outline">
+            {LEVEL_ORDER.map((level) => {
+              const label = level
+                .replace('distributed-system', 'System')
+                .replace(/-/g, ' ')
+                .replace(/\b\w/g, (char) => char.toUpperCase());
+              const crumb = breadcrumbs.find((item) => item.id.includes(level));
+              return (
+                <div key={level} className={`context-item ${crumb ? 'is-present' : ''}`}>
+                  <span className="context-dot" data-level={level} />
+                  <span className="context-label">{label}</span>
+                  <span className="context-value">{crumb ? crumb.name : '—'}</span>
+                </div>
+              );
+            })}
+          </div>
+          <div className={`canvas-wrapper ${viewMode}`}>
+            {viewMode === 'spatial' ? (
+              <TopologyScene
+                topology={topology}
+                focusPath={focusPath}
+                onSelectNode={handleSelectNode}
+                onHoverNode={setHoveredNode}
+              />
+            ) : (
+              <SunburstView
+                topology={topology}
+                focusPath={focusPath}
+                onSelectNode={handleSelectNode}
+                onHoverNode={setHoveredNode}
+              />
+            )}
+            <div className="canvas-overlay">
+              <h3>Focus details</h3>
+              {activeDescription.base && <p>{activeDescription.base}</p>}
+              {activeDescription.details.length > 0 && (
+                <ul>
+                  {activeDescription.details.map((item) => (
+                    <li key={item.key}>
+                      <strong>{item.key}</strong>: {item.value}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            {hoveredNode && (
+              <div className="hover-card">
+                <h4>{hoveredNode.name}</h4>
+                <p>{hoveredNode.meta?.explanation}</p>
+                <ul>
+                  {Object.entries(hoveredNode.meta ?? {})
+                    .filter(([key]) => key !== 'explanation')
+                    .map(([key, value]) => (
+                      <li key={key}>
+                        <strong>{key}</strong>: {value}
+                      </li>
+                    ))}
+                </ul>
+              </div>
             )}
           </div>
-          <TopologyScene
-            topology={topology}
-            activeNode={activeNode}
-            focusDepth={focusDepth}
-            onSelectNode={handleSelectNode}
-          />
         </div>
+        <aside className="legend-panel">
+          <section>
+            <h2>Legend</h2>
+            <ul className="legend-list">
+              <li data-level="server">Servers (blue)</li>
+              <li data-level="device">GPUs (green)</li>
+              <li data-level="grid">CUDA grids (orange)</li>
+              <li data-level="block">Blocks (yellow)</li>
+              <li data-level="warp">Warps (purple)</li>
+              <li data-level="thread">Threads (gray)</li>
+            </ul>
+          </section>
+          <section>
+            <h2>Concept glossary</h2>
+            <dl className="glossary">
+              <dt>Grid</dt>
+              <dd>Collection of thread blocks launched for a CUDA kernel invocation.</dd>
+              <dt>Block</dt>
+              <dd>Group of threads that share fast memory and synchronize on an SM.</dd>
+              <dt>Warp</dt>
+              <dd>32 threads executed in lock-step by the SIMT scheduler.</dd>
+              <dt>Thread</dt>
+              <dd>Smallest unit of CUDA execution, typically handling one data element.</dd>
+            </dl>
+          </section>
+        </aside>
       </div>
       <footer className="footer">
-        Built with React, Vite, and react-three-fiber/Three.js to emphasise spatial reasoning about distributed AI
-        training infrastructure.
+        Built with React, Vite, and react-three-fiber/Three.js. Use the controls to map distributed infrastructure to CUDA
+        execution and export the derived hierarchy for offline analysis.
       </footer>
     </div>
   );

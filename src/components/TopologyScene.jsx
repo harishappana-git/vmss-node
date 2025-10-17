@@ -1,180 +1,248 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import PropTypes from 'prop-types';
-import { Canvas, useThree } from '@react-three/fiber';
-import { OrbitControls, Html, Line, PerspectiveCamera } from '@react-three/drei';
+import { Canvas } from '@react-three/fiber';
+import { Html, OrbitControls, PerspectiveCamera } from '@react-three/drei';
+
+import { LEVEL_ORDER } from '../topology.js';
 
 const NODE_COLORS = {
-  'distributed-system': '#58a6ff',
-  server: '#f78166',
-  device: '#f2cc60',
-  grid: '#8ddb8c',
-  block: '#d2a8ff',
-  warp: '#79c0ff',
-  thread: '#ffa657'
+  'distributed-system': '#0b7285',
+  server: '#1f6feb',
+  device: '#2ea043',
+  grid: '#f0883e',
+  block: '#f2cc60',
+  warp: '#bf7af0',
+  thread: '#8b949e'
 };
 
-const NODE_SCALE = {
-  'distributed-system': 2.2,
-  server: 2,
-  device: 1.8,
-  grid: 1.4,
-  block: 1.2,
-  warp: 0.9,
-  thread: 0.65
+const LEVEL_LABELS = {
+  'distributed-system': 'System',
+  server: 'Servers',
+  device: 'GPUs',
+  grid: 'CUDA Grids',
+  block: 'Blocks',
+  warp: 'Warps',
+  thread: 'Threads'
 };
 
-const NodeMesh = ({ node, position, onSelect, isActiveChild }) => {
-  const radius = NODE_SCALE[node.type] || 1;
-  const color = NODE_COLORS[node.type] || '#cccccc';
+const collectFocusNodes = (root, focusPath) => {
+  const nodes = [root];
+  let current = root;
+  for (let i = 1; i < focusPath.length; i += 1) {
+    const next = current.children?.find((child) => child.id === focusPath[i]);
+    if (next) {
+      nodes.push(next);
+      current = next;
+    } else {
+      break;
+    }
+  }
+  return nodes;
+};
 
+const collectDescendantIds = (node, set = new Set()) => {
+  set.add(node.id);
+  (node.children ?? []).forEach((child) => collectDescendantIds(child, set));
+  return set;
+};
+
+const collectLevels = (root, focusNodes) => {
+  const levels = [];
+  LEVEL_ORDER.forEach((type, index) => {
+    if (index === 0) {
+      levels.push({ type, nodes: [root], parentId: null });
+      return;
+    }
+    const parent = focusNodes[Math.min(index - 1, focusNodes.length - 1)];
+    const nodes = parent?.children ?? [];
+    if (nodes.length > 0) {
+      levels.push({ type, nodes, parentId: parent?.id ?? null });
+    }
+  });
+  return levels;
+};
+
+const MatrixCell = ({ node, isActive, isContext, isDescendant, onSelect, onHover }) => (
+  <button
+    type="button"
+    className={`matrix-cell matrix-${node.type} ${isActive ? 'is-active' : ''} ${
+      isDescendant ? 'is-descendant' : ''
+    } ${isContext ? 'is-context' : ''}`.trim()}
+    style={{ '--node-color': NODE_COLORS[node.type] ?? '#6e7681' }}
+    onClick={(event) => {
+      event.stopPropagation();
+      onSelect(node);
+    }}
+    onMouseEnter={() => onHover(node)}
+    onFocus={() => onHover(node)}
+    onMouseLeave={() => onHover(null)}
+    onBlur={() => onHover(null)}
+  >
+    <span className="matrix-cell__title">{node.name}</span>
+    <span className="matrix-cell__meta">{node.meta?.explanation}</span>
+    {node.meta && (
+      <div className="matrix-cell__stats">
+        {Object.entries(node.meta)
+          .filter(([key]) => key !== 'explanation')
+          .slice(0, 3)
+          .map(([key, value]) => (
+            <span key={key}>
+              <strong>{key}</strong>: {value}
+            </span>
+          ))}
+      </div>
+    )}
+  </button>
+);
+
+MatrixCell.propTypes = {
+  node: PropTypes.object.isRequired,
+  isActive: PropTypes.bool,
+  isContext: PropTypes.bool,
+  isDescendant: PropTypes.bool,
+  onSelect: PropTypes.func.isRequired,
+  onHover: PropTypes.func.isRequired
+};
+
+MatrixCell.defaultProps = {
+  isActive: false,
+  isContext: false,
+  isDescendant: false
+};
+
+const LevelMatrix = ({ level, nodes, focusSet, descendantSet, activeId, parentId, onSelect, onHover }) => (
+  <div className="matrix">
+    <header className="matrix__header">
+      <span className="matrix__title">{LEVEL_LABELS[level]} matrix</span>
+      <span className="matrix__subtitle">{nodes.length} {LEVEL_LABELS[level].toLowerCase()}</span>
+    </header>
+    <div className="matrix__grid">
+      {nodes.map((node) => {
+        const isActive = node.id === activeId;
+        const isContext = !isActive && parentId !== null && node.id !== activeId;
+        const isDescendant = descendantSet.has(node.id) || focusSet.has(node.id);
+        return (
+          <MatrixCell
+            key={node.id}
+            node={node}
+            isActive={isActive}
+            isContext={isContext && !isDescendant}
+            isDescendant={isDescendant}
+            onSelect={onSelect}
+            onHover={onHover}
+          />
+        );
+      })}
+    </div>
+  </div>
+);
+
+LevelMatrix.propTypes = {
+  level: PropTypes.string.isRequired,
+  nodes: PropTypes.arrayOf(PropTypes.object).isRequired,
+  focusSet: PropTypes.instanceOf(Set).isRequired,
+  descendantSet: PropTypes.instanceOf(Set).isRequired,
+  activeId: PropTypes.string,
+  parentId: PropTypes.string,
+  onSelect: PropTypes.func.isRequired,
+  onHover: PropTypes.func.isRequired
+};
+
+LevelMatrix.defaultProps = {
+  activeId: null,
+  parentId: null
+};
+
+const LevelPlate = ({ levelIndex, children }) => {
+  const z = -levelIndex * 6;
+  const y = 0;
+  const width = 18;
+  const depth = 10;
   return (
-    <group position={position}>
-      <mesh
-        onClick={(event) => {
-          event.stopPropagation();
-          onSelect(node);
-        }}
-        scale={isActiveChild ? 1.05 : 1}
+    <group position={[0, y, z]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.6, 0]}
+        scale={[1, 1, 1]}
       >
-        <sphereGeometry args={[radius, 48, 48]} />
-        <meshStandardMaterial
-          color={color}
-          opacity={isActiveChild ? 0.95 : 0.8}
-          transparent
-          roughness={0.4}
-          metalness={0.3}
-        />
+        <planeGeometry args={[width, depth]} />
+        <meshStandardMaterial color="#0d1117" opacity={0.45} transparent />
       </mesh>
-      <Html center distanceFactor={8} position={[0, radius + 0.75, 0]}>
-        <div
-          style={{
-            padding: '0.25rem 0.5rem',
-            borderRadius: '999px',
-            background: 'rgba(13, 17, 23, 0.8)',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            whiteSpace: 'nowrap',
-            fontSize: '0.75rem'
-          }}
-        >
-          {node.name}
-        </div>
+      <Html
+        transform
+        distanceFactor={18}
+        position={[0, 0.1, 0]}
+        style={{ width: `${width * 22}px`, maxWidth: '720px' }}
+      >
+        <div className="matrix-wrapper">{children}</div>
       </Html>
     </group>
   );
 };
 
-NodeMesh.propTypes = {
-  node: PropTypes.object.isRequired,
-  position: PropTypes.arrayOf(PropTypes.number).isRequired,
-  onSelect: PropTypes.func.isRequired,
-  isActiveChild: PropTypes.bool
+LevelPlate.propTypes = {
+  levelIndex: PropTypes.number.isRequired,
+  children: PropTypes.node.isRequired
 };
 
-NodeMesh.defaultProps = {
-  isActiveChild: false
-};
-
-const ActiveNodeContent = ({ node, onSelectChild }) => {
-  const children = node.children ?? [];
-  const radius = Math.max(6, children.length * 0.75 + 4);
+const Scene = ({ topology, focusPath, onSelectNode, onHoverNode }) => {
+  const focusNodes = useMemo(() => collectFocusNodes(topology, focusPath), [topology, focusPath]);
+  const levels = useMemo(() => collectLevels(topology, focusNodes), [topology, focusNodes]);
+  const focusSet = useMemo(() => new Set(focusPath), [focusPath]);
+  const activeNode = focusNodes[focusNodes.length - 1];
+  const descendantSet = useMemo(() => collectDescendantIds(activeNode), [activeNode]);
 
   return (
-    <group>
-      <NodeMesh node={node} position={[0, 0, 0]} onSelect={onSelectChild} />
-      {children.map((child, index) => {
-        const angle = (index / children.length) * Math.PI * 2;
-        const distance = radius + Math.sin(index) * 0.2;
-        const x = Math.cos(angle) * distance;
-        const z = Math.sin(angle) * distance;
-        return (
-          <group key={child.id}>
-            <Line
-              points={[[0, 0, 0], [x, 0, z]]}
-              color="#3fb0ff"
-              lineWidth={1}
-              transparent
-              opacity={0.35}
-            />
-            <NodeMesh
-              node={child}
-              position={[x, 0, z]}
-              onSelect={onSelectChild}
-              isActiveChild
-            />
-          </group>
-        );
-      })}
-    </group>
+    <Canvas dpr={[1, 2]} shadows>
+      <PerspectiveCamera makeDefault position={[0, 12, 32]} fov={52} />
+      <color attach="background" args={[0x04070d]} />
+      <ambientLight intensity={0.6} />
+      <directionalLight position={[18, 22, 18]} intensity={1.1} />
+      <pointLight position={[-10, 12, -14]} intensity={0.4} color="#58a6ff" />
+      {levels.map((level, index) => (
+        <LevelPlate key={level.type} levelIndex={index}>
+          <LevelMatrix
+            level={level.type}
+            nodes={level.nodes}
+            focusSet={focusSet}
+            descendantSet={descendantSet}
+            activeId={focusPath[index] ?? null}
+            parentId={level.parentId}
+            onSelect={onSelectNode}
+            onHover={onHoverNode}
+          />
+        </LevelPlate>
+      ))}
+      <OrbitControls
+        enablePan
+        enableDamping
+        dampingFactor={0.15}
+        minDistance={12}
+        maxDistance={68}
+        minPolarAngle={0.2 * Math.PI}
+        maxPolarAngle={0.85 * Math.PI}
+      />
+    </Canvas>
   );
 };
 
-ActiveNodeContent.propTypes = {
-  node: PropTypes.object.isRequired,
-  onSelectChild: PropTypes.func.isRequired
-};
-
-const CameraRig = ({ focusDepth }) => {
-  const { camera } = useThree();
-
-  useEffect(() => {
-    const targetZ = 18 + focusDepth * 4;
-    const targetY = 8 + focusDepth * 1.5;
-    camera.position.lerp({ x: 0, y: targetY, z: targetZ }, 0.2);
-    camera.updateProjectionMatrix();
-  }, [focusDepth, camera]);
-
-  return null;
-};
-
-CameraRig.propTypes = {
-  focusDepth: PropTypes.number.isRequired
-};
-
-const Scene = ({ topology, activeNode, focusDepth, onSelectNode }) => (
-  <Canvas shadows dpr={[1, 2]}>
-    <PerspectiveCamera makeDefault position={[0, 12, 28]} fov={48} />
-    <color attach="background" args={[0x05070a]} />
-    <ambientLight intensity={0.3} />
-    <directionalLight position={[12, 18, 16]} intensity={1.1} castShadow />
-    <pointLight position={[-8, 6, -10]} intensity={0.6} color="#58a6ff" />
-    <pointLight position={[10, -6, 4]} intensity={0.3} color="#d2a8ff" />
-
-    <group position={[0, 0, 0]}>
-      <ActiveNodeContent node={activeNode} onSelectChild={onSelectNode} />
-    </group>
-
-    <OrbitControls
-      enablePan
-      enableDamping
-      dampingFactor={0.2}
-      minDistance={6}
-      maxDistance={64}
-      minPolarAngle={0.15 * Math.PI}
-      maxPolarAngle={0.85 * Math.PI}
-    />
-    <CameraRig focusDepth={focusDepth} />
-  </Canvas>
-);
-
 Scene.propTypes = {
   topology: PropTypes.object.isRequired,
-  activeNode: PropTypes.object.isRequired,
-  focusDepth: PropTypes.number.isRequired,
-  onSelectNode: PropTypes.func.isRequired
+  focusPath: PropTypes.arrayOf(PropTypes.string).isRequired,
+  onSelectNode: PropTypes.func.isRequired,
+  onHoverNode: PropTypes.func.isRequired
 };
 
-const TopologyScene = ({ topology, activeNode, focusDepth, onSelectNode }) => {
+const TopologyScene = ({ topology, focusPath, onSelectNode, onHoverNode }) => {
   const memoisedScene = useMemo(
     () => (
       <Scene
-        key={activeNode.id}
+        key={focusPath.join('>')}
         topology={topology}
-        activeNode={activeNode}
-        focusDepth={focusDepth}
+        focusPath={focusPath}
         onSelectNode={onSelectNode}
+        onHoverNode={onHoverNode}
       />
     ),
-    [topology, activeNode, focusDepth, onSelectNode]
+    [topology, focusPath, onSelectNode, onHoverNode]
   );
 
   return memoisedScene;
@@ -182,9 +250,9 @@ const TopologyScene = ({ topology, activeNode, focusDepth, onSelectNode }) => {
 
 TopologyScene.propTypes = {
   topology: PropTypes.object.isRequired,
-  activeNode: PropTypes.object.isRequired,
-  focusDepth: PropTypes.number.isRequired,
-  onSelectNode: PropTypes.func.isRequired
+  focusPath: PropTypes.arrayOf(PropTypes.string).isRequired,
+  onSelectNode: PropTypes.func.isRequired,
+  onHoverNode: PropTypes.func.isRequired
 };
 
 export default TopologyScene;

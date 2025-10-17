@@ -1,13 +1,12 @@
 # AI Distributed Training Stack Explorer
 
-An interactive 3D visualisation that helps you reason about the full distributed training stack used by GPU-accelerated AI workloads. Adjust dataset size, batch size, GPU count, and server nodes to see how CUDA components (threads, warps, blocks, grids) and the broader distributed architecture change. Click any element to zoom in and inspect finer execution levels.
-
+An interactive explorer for understanding how distributed AI workloads map from dataset scale down to CUDA execution units. Adjust dataset size, batch size, GPU count, and server nodes to watch the hierarchy respond. Click any element to zoom in and keep the surrounding context visible, or switch to a sunburst treemap for an information-dense overview. Export the generated topology for offline study.
 
 ## Tech stack
 
-- [React](https://react.dev/) + [Vite](https://vitejs.dev/) for fast interactive UI development
-- [react-three-fiber](https://docs.pmnd.rs/react-three-fiber/getting-started/introduction) and [Three.js](https://threejs.org/) for 3D scene management
-- [@react-three/drei](https://github.com/pmndrs/drei) utilities for camera control, labels, and lighting helpers
+- [React](https://react.dev/) + [Vite](https://vitejs.dev/) for the reactive UI shell
+- [react-three-fiber](https://docs.pmnd.rs/react-three-fiber/getting-started/introduction) / [Three.js](https://threejs.org/) for layered 3D scene composition
+- [D3 hierarchy utilities](https://github.com/d3/d3-hierarchy) for the sunburst treemap layout
 
 ## Getting started
 
@@ -23,7 +22,7 @@ An interactive 3D visualisation that helps you reason about the full distributed
    npm run dev
    ```
 
-   The server listens on `http://localhost:5173` by default. Use the on-screen controls to tweak dataset and hardware parameters, then click on any rendered component to dive deeper into the hierarchy. Breadcrumbs let you jump back up the stack instantly.
+   The server listens on `http://localhost:5173` by default. Use the controls to configure dataset size, batch size, GPUs, and nodes. Click inside the spatial scene to drill into servers, GPUs, grids, blocks, warps, and threads while keeping the full hierarchy visible in faded context. Hover cards reveal metadata for each component.
 
 3. **Build for production**
 
@@ -35,13 +34,16 @@ An interactive 3D visualisation that helps you reason about the full distributed
 
 ## Exploring the visualisation
 
-- **Distributed system level** – understand how many servers participate and the chosen interconnect.
-- **Server/GPU level** – click a server to reveal its GPUs, SM estimates, and device memory footprint.
-- **CUDA hierarchy** – keep drilling down through grids, blocks, warps, and threads. Each level updates the descriptive panel so you can map terminology to execution responsibilities.
-- **Breadcrumbs & camera** – use the breadcrumb trail to navigate back up. Orbit controls let you pan, rotate, and zoom the 3D scene for better spatial awareness.
+- **Spatial matrices** – stacked tables render servers, GPUs, grids, blocks, warps, and threads with colour-coded cards, keeping outer layers present even when you zoom inside.
+- **Breadcrumb navigation** – always-visible breadcrumbs and a dedicated *Show full system* button make it easy to reset or traverse back up.
+- **Hover insights** – hover on any card (or sunburst segment) to surface latency, occupancy, memory, and scheduling metadata. Click to focus a layer.
+- **Performance overlay** – throughput, memory footprint, interconnect bandwidth, and epoch duration update live from your inputs.
+- **Sunburst treemap** – switch to the sunburst view for a compressed representation of the full hierarchy alongside the 3D scene.
+- **Legend & glossary** – colour legend and terminology cheat sheet stay pinned on the right for quick reference.
+- **CSV export** – capture the generated topology (with metadata) as a CSV for notebooks, reports, or sharing.
 
 ## Notes
 
-- Thread, warp, block, and grid counts are derived from your dataset and batch size inputs using heuristics to keep the scene performant while conveying execution scale.
-- The model favours architectural clarity over visual extravagance—colours are muted so you can focus on structure and relationships.
-- Extend the data model in `src/topology.js` if you want to encode device-specific capabilities such as tensor core counts or NVLink bandwidth.
+- Thread, warp, block, and grid counts are derived from dataset and batch inputs using heuristics to stay performant while conveying scale.
+- Colours prioritise clarity over decoration: servers (blue), GPUs (green), grids (orange), blocks (yellow), warps (purple), threads (gray).
+- Extend the data model in `src/topology.js` to incorporate device-specific attributes like tensor cores or network topology if required.

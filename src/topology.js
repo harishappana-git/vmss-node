@@ -5,7 +5,9 @@ const BLOCKS_PER_GRID = 16;
 
 const clampCount = (value, max = 512) => Math.max(1, Math.min(Math.round(value), max));
 
-const buildThreads = (count, parentId) =>
+const asPercentage = (value) => `${Math.round(value * 100)}%`;
+
+const buildThreads = (count, parentId, kernelDurationMs) =>
   Array.from({ length: clampCount(count) }, (_, idx) => ({
     id: `${parentId}-thread-${idx}`,
     name: `Thread ${idx + 1}`,
@@ -13,49 +15,62 @@ const buildThreads = (count, parentId) =>
     count,
     meta: {
       lane: idx % WARP_SIZE,
+      workloadShare: `${(100 / count).toFixed(2)}% of kernel work`,
+      latency: `${(kernelDurationMs / count).toFixed(3)} ms (est.)`,
       explanation: 'CUDA thread executing one element of your workload.'
     },
     children: []
   }));
 
-const buildWarps = (threadCount, parentId) => {
+const buildWarps = (threadCount, parentId, kernelDurationMs) => {
   const warps = Math.ceil(threadCount / WARP_SIZE);
-  return Array.from({ length: clampCount(warps, 128) }, (_, idx) => {
+  const effectiveWarps = clampCount(warps, 128);
+  return Array.from({ length: effectiveWarps }, (_, idx) => {
     const warpId = `${parentId}-warp-${idx}`;
+    const threadsInWarp = Math.min(WARP_SIZE, Math.ceil(threadCount / effectiveWarps));
     return {
       id: warpId,
       name: `Warp ${idx + 1}`,
       type: 'warp',
       count: warps,
       meta: {
-        size: WARP_SIZE,
+        threadsPerWarp: threadsInWarp,
+        scheduling: 'SIMT (single instruction, multiple threads)',
+        executionWindow: `${(kernelDurationMs / effectiveWarps).toFixed(2)} ms slice`,
         explanation: 'Warp of 32 threads scheduled together on a CUDA core.'
       },
-      children: buildThreads(threadCount / warps, warpId)
+      children: buildThreads(threadsInWarp, warpId, kernelDurationMs)
     };
   });
 };
 
-const buildBlocks = (warpCount, threadCount, parentId) => {
+const buildBlocks = (warpCount, threadCount, parentId, kernelDurationMs) => {
   const blocks = Math.ceil((warpCount || 1) / WARPS_PER_BLOCK);
-  return Array.from({ length: clampCount(blocks, 64) }, (_, idx) => {
+  const effectiveBlocks = clampCount(blocks, 64);
+  return Array.from({ length: effectiveBlocks }, (_, idx) => {
     const blockId = `${parentId}-block-${idx}`;
-    const warpsPerBlock = warpCount / blocks;
-    const threadsPerBlock = Math.min(MAX_THREADS_PER_BLOCK, Math.round(threadCount / blocks));
+    const warpsPerBlock = Math.max(1, Math.round(warpCount / effectiveBlocks));
+    const threadsPerBlock = Math.min(
+      MAX_THREADS_PER_BLOCK,
+      Math.max(WARP_SIZE, Math.round(threadCount / effectiveBlocks))
+    );
+    const sharedMemoryPerBlock = Math.round(64 / effectiveBlocks);
     return {
       id: blockId,
       name: `Block ${idx + 1}`,
       type: 'block',
       count: blocks,
       meta: {
-        sharedMemory: `${Math.round(48 / blocks)} KB (approx.)`,
+        sharedMemory: `${sharedMemoryPerBlock} KB (approx.)`,
+        warpsPerBlock,
+        occupancy: asPercentage(Math.min(1, threadsPerBlock / MAX_THREADS_PER_BLOCK)),
         explanation: 'Thread block scheduled on a Streaming Multiprocessor.'
       },
-      children: buildWarps(warpsPerBlock * WARP_SIZE, blockId).map((warp, warpIndex) => ({
+      children: buildWarps(warpsPerBlock * WARP_SIZE, blockId, kernelDurationMs).map((warp) => ({
         ...warp,
         meta: {
           ...warp.meta,
-          threads: threadsPerBlock / (warpCount ? warpCount / blocks : 1),
+          threadsPerWarp: Math.min(WARP_SIZE, threadsPerBlock / warpsPerBlock),
           explanation: 'Warp inside this block sharing resources and synchronization.'
         }
       }))
@@ -63,11 +78,12 @@ const buildBlocks = (warpCount, threadCount, parentId) => {
   });
 };
 
-const buildGrids = (blockCount, threadCount, parentId) => {
+const buildGrids = (blockCount, threadCount, parentId, kernelDurationMs) => {
   const grids = Math.ceil((blockCount || 1) / BLOCKS_PER_GRID);
-  return Array.from({ length: clampCount(grids, 32) }, (_, idx) => {
+  const effectiveGrids = clampCount(grids, 32);
+  return Array.from({ length: effectiveGrids }, (_, idx) => {
     const gridId = `${parentId}-grid-${idx}`;
-    const blocksPerGrid = Math.max(1, Math.round(blockCount / grids));
+    const blocksPerGrid = Math.max(1, Math.round(blockCount / effectiveGrids));
     return {
       id: gridId,
       name: `Grid ${idx + 1}`,
@@ -75,16 +91,19 @@ const buildGrids = (blockCount, threadCount, parentId) => {
       count: grids,
       meta: {
         blocksPerGrid,
+        launches: `${Math.max(1, Math.round(threadCount / (blocksPerGrid * WARP_SIZE)))} kernels`,
         explanation: 'Grid launched from a kernel call encompassing many blocks.'
       },
-      children: buildBlocks(blocksPerGrid, threadCount / grids, gridId)
+      children: buildBlocks(blocksPerGrid * WARPS_PER_BLOCK, threadCount / effectiveGrids, gridId, kernelDurationMs)
     };
   });
 };
 
 const buildDevice = (deviceIndex, deviceConfig, parentId) => {
   const deviceId = `${parentId}-device-${deviceIndex}`;
-  const { threadCount, warpCount, blockCount } = deviceConfig;
+  const { threadCount, warpCount, blockCount, kernelDurationMs } = deviceConfig;
+  const grids = buildGrids(blockCount, threadCount, deviceId, kernelDurationMs);
+  const occupancy = Math.min(1, warpCount / (deviceConfig.smCount * WARPS_PER_BLOCK));
   return {
     id: deviceId,
     name: `GPU ${deviceIndex + 1}`,
@@ -93,14 +112,19 @@ const buildDevice = (deviceIndex, deviceConfig, parentId) => {
     meta: {
       smCount: deviceConfig.smCount,
       memory: deviceConfig.memory,
+      bandwidth: `${deviceConfig.bandwidth} GB/s (est.)`,
+      occupancy: asPercentage(occupancy),
       explanation: 'CUDA device executing kernels in parallel.'
     },
-    children: buildGrids(blockCount, threadCount, deviceId)
+    children: grids
   };
 };
 
 const buildNode = (nodeIndex, nodeConfig, parentId) => {
   const nodeId = `${parentId}-node-${nodeIndex}`;
+  const devices = Array.from({ length: nodeConfig.gpusPerNode }, (_, gpuIdx) =>
+    buildDevice(gpuIdx, nodeConfig, nodeId)
+  );
   return {
     id: nodeId,
     name: `Server ${nodeIndex + 1}`,
@@ -108,11 +132,10 @@ const buildNode = (nodeIndex, nodeConfig, parentId) => {
     count: nodeConfig.nodeCount,
     meta: {
       interconnect: nodeConfig.interconnect,
+      network: `${nodeConfig.networkBandwidth} Gbps fabric`,
       explanation: 'Host server orchestrating multiple GPUs and participating in distributed training.'
     },
-    children: Array.from({ length: nodeConfig.gpusPerNode }, (_, gpuIdx) =>
-      buildDevice(gpuIdx, nodeConfig, nodeId)
-    )
+    children: devices
   };
 };
 
@@ -120,12 +143,14 @@ export const buildTopology = (config) => {
   const { datasetSize, batchSize, gpus, nodes } = config;
 
   const effectiveDataset = Math.max(datasetSize, batchSize);
-  const threadCount = clampCount(Math.ceil(effectiveDataset / Math.max(1, batchSize / 4)) * batchSize, 4096);
+  const kernelDurationMs = Math.max(4, Math.log2(effectiveDataset + batchSize)) * 0.75;
+  const threadCount = clampCount(Math.ceil(effectiveDataset / Math.max(1, batchSize / 4)) * batchSize, 8192);
   const warpCount = Math.ceil(threadCount / WARP_SIZE);
   const blockCount = Math.ceil(warpCount / WARPS_PER_BLOCK);
 
   const smCount = Math.max(8, Math.min(128, Math.round(threadCount / 128)));
   const deviceMemory = `${Math.max(24, Math.min(120, Math.round(effectiveDataset / 1024)))} GB`;
+  const bandwidth = Math.max(600, Math.min(1500, Math.round(threadCount / 10)));
 
   const nodeConfig = {
     nodeCount: nodes,
@@ -133,10 +158,13 @@ export const buildTopology = (config) => {
     deviceCount: gpus,
     smCount,
     memory: deviceMemory,
+    bandwidth,
     interconnect: nodes > 1 ? 'InfiniBand / 100GbE' : 'PCIe Gen4',
+    networkBandwidth: nodes > 1 ? 200 : 64,
     threadCount,
     warpCount,
-    blockCount
+    blockCount,
+    kernelDurationMs
   };
 
   return {
@@ -152,21 +180,27 @@ export const buildTopology = (config) => {
   };
 };
 
+const sumByType = (topology, type) => {
+  if (!topology) return 0;
+  const isMatch = topology.type === type ? 1 : 0;
+  const childCount = (topology.children ?? []).reduce((acc, child) => acc + sumByType(child, type), 0);
+  return isMatch + childCount;
+};
+
 export const deriveMetrics = (config) => {
   const topology = buildTopology(config);
   const nodeCount = topology.children.length;
   const gpuCount = topology.children.reduce((acc, node) => acc + node.children.length, 0);
-  const gridCount = topology.children.flatMap((node) => node.children).reduce((acc, device) => acc + device.children.length, 0);
-  const blockCount = topology.children
-    .flatMap((node) => node.children)
-    .flatMap((device) => device.children)
-    .reduce((acc, grid) => acc + grid.children.length, 0);
-  const warpCount = topology.children
-    .flatMap((node) => node.children)
-    .flatMap((device) => device.children)
-    .flatMap((grid) => grid.children)
-    .reduce((acc, block) => acc + block.children.length, 0);
+  const gridCount = sumByType(topology, 'grid');
+  const blockCount = sumByType(topology, 'block');
+  const warpCount = sumByType(topology, 'warp');
   const threadCount = config.datasetSize * config.batchSize;
+
+  const peakFlopsPerGpu = 312 * 10 ** 12; // 312 TFLOPs for modern GPUs
+  const effectiveFlops = peakFlopsPerGpu * gpuCount * 0.55;
+  const memoryGb = Math.max(24, Math.min(120, Math.round(config.datasetSize / 1024))) * gpuCount;
+  const bandwidthGb = gpuCount * Math.max(600, Math.min(1500, Math.round(threadCount / 10)));
+  const epochSeconds = Math.max(1, (config.datasetSize / Math.max(1, gpuCount * config.batchSize)) * 0.9);
 
   return {
     nodes: nodeCount,
@@ -174,6 +208,49 @@ export const deriveMetrics = (config) => {
     grids: gridCount,
     blocks: blockCount,
     warps: warpCount,
-    threads: threadCount
+    threads: threadCount,
+    flops: effectiveFlops,
+    memoryGb,
+    bandwidthGb,
+    epochSeconds
   };
 };
+
+const flattenNode = (node, parentId = null, rows = []) => {
+  const metaEntries = Object.entries(node.meta ?? {})
+    .filter(([key]) => key !== 'explanation')
+    .map(([key, value]) => `${key}: ${value}`)
+    .join(' | ');
+  rows.push({
+    id: node.id,
+    name: node.name,
+    type: node.type,
+    parent: parentId,
+    meta: metaEntries
+  });
+  (node.children ?? []).forEach((child) => flattenNode(child, node.id, rows));
+  return rows;
+};
+
+export const topologyToCsv = (topology) => {
+  const rows = flattenNode(topology);
+  const header = 'id,name,type,parent,meta';
+  const body = rows
+    .map((row) =>
+      [row.id, row.name, row.type, row.parent ?? '', row.meta.replace(/"/g, '""')]
+        .map((value) => `"${value}"`)
+        .join(',')
+    )
+    .join('\n');
+  return `${header}\n${body}`;
+};
+
+export const LEVEL_ORDER = [
+  'distributed-system',
+  'server',
+  'device',
+  'grid',
+  'block',
+  'warp',
+  'thread'
+];
