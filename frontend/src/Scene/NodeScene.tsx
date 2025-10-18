@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react'
-import { Text } from '@react-three/drei'
+import { Edges, Text } from '@react-three/drei'
 import { Color, QuadraticBezierCurve3, TubeGeometry, Vector3 } from 'three'
 import type { ClusterSpec, MemoryDescriptor, NodeSpec, RackSpec } from '../types'
 import { useExplorerStore } from '../state/selectionStore'
@@ -38,18 +38,34 @@ type MemoryModuleProps = {
   position: [number, number, number]
   rotation?: [number, number, number]
   selected: boolean
+  node: NodeSpec
+  cluster: ClusterSpec
+  rack: RackSpec
 }
 
-function MemoryModule({ descriptor, position, rotation, selected }: MemoryModuleProps) {
+function MemoryModule({ descriptor, position, rotation, selected, node, cluster, rack }: MemoryModuleProps) {
   const select = useExplorerStore((state) => state.select)
+  const openBlueprint = useExplorerStore((state) => state.openMemoryBlueprint)
 
   const handleClick = (event: ThreeEvent<MouseEvent>) => {
     event.stopPropagation()
     select({ kind: 'memory', id: descriptor.id }, { memoryInfo: descriptor })
   }
 
+  const handleDoubleClick = (event: ThreeEvent<MouseEvent>) => {
+    event.stopPropagation()
+    select({ kind: 'memory', id: descriptor.id }, { memoryInfo: descriptor })
+    openBlueprint({
+      scope: 'node',
+      descriptor,
+      node,
+      clusterName: cluster.name,
+      rackName: rack.name
+    })
+  }
+
   return (
-    <group position={position} rotation={rotation} onClick={handleClick}>
+    <group position={position} rotation={rotation} onClick={handleClick} onDoubleClick={handleDoubleClick}>
       <mesh>
         <boxGeometry args={[0.45, 0.22, 1.1]} />
         <meshStandardMaterial
@@ -58,6 +74,7 @@ function MemoryModule({ descriptor, position, rotation, selected }: MemoryModule
           roughness={0.35}
           metalness={0.2}
         />
+        <Edges scale={1.02} color="#6ff3c4" />
       </mesh>
       <Text position={[0, 0.35, 0]} fontSize={0.22} color="#bfe9da" anchorX="center" anchorY="bottom" billboard>
         {descriptor.label}
@@ -113,6 +130,7 @@ function GPUCard({ gpu, position, node, cluster, rack, selected, utilText, hbmTe
           emissive={selected ? '#6da4ff' : '#0a2c78'}
           roughness={0.38}
         />
+        <Edges scale={1.01} color="#9ad7ff" />
       </mesh>
       <Text position={[0, top, 0]} fontSize={0.34} color="#d6e4ff" anchorX="center" anchorY="bottom" billboard>
         {gpu.name}
@@ -234,6 +252,7 @@ export function NodeScene({ node, cluster, rack }: NodeSceneProps) {
           metalness={0.35}
           roughness={0.6}
         />
+        <Edges scale={1.001} color="#3f66ff" />
       </mesh>
 
       <mesh position={[0, 1.15, -4.3]}>
@@ -252,6 +271,7 @@ export function NodeScene({ node, cluster, rack }: NodeSceneProps) {
       <mesh position={[0, 1.2, 0]}>
         <cylinderGeometry args={[1.8, 1.8, 0.5, 48]} />
         <meshStandardMaterial color="#3a9efd" emissive="#1a4dd9" metalness={0.6} roughness={0.4} />
+        <Edges scale={1.01} color="#88c8ff" />
       </mesh>
       <Text position={[0, 2, 0]} fontSize={0.38} color="#b4c9ff" anchorX="center" anchorY="middle" billboard>
         NVSwitch Hub
@@ -260,6 +280,7 @@ export function NodeScene({ node, cluster, rack }: NodeSceneProps) {
       <mesh position={[0, 1.1, 3.9]}>
         <boxGeometry args={[4, 0.6, 1.6]} />
         <meshStandardMaterial color="#2f3c52" emissive="#1c273a" roughness={0.45} />
+        <Edges scale={1.01} color="#6aa0ff" />
       </mesh>
       <Text position={[0, 1.9, 3.9]} fontSize={0.32} color="#9fb8ff" anchorX="center" anchorY="middle" billboard>
         Dual BlueField-3 &amp; ConnectX-7 IO
@@ -274,12 +295,16 @@ export function NodeScene({ node, cluster, rack }: NodeSceneProps) {
           position={position}
           rotation={rotation}
           selected={selectedMemoryId === descriptor.id}
+          node={node}
+          cluster={cluster}
+          rack={rack}
         />
       ))}
 
       <mesh position={[-6.2, 1.05, -4.0]}>
         <boxGeometry args={[2.2, 0.6, 2.4]} />
         <meshStandardMaterial color="#2b3348" emissive="#121a2a" roughness={0.45} />
+        <Edges scale={1.01} color="#6a8bff" />
       </mesh>
       <Text position={[-6.2, 1.9, -4.0]} fontSize={0.34} color="#95b6ff" anchorX="center" anchorY="middle" billboard>
         CPU 0
@@ -288,6 +313,7 @@ export function NodeScene({ node, cluster, rack }: NodeSceneProps) {
       <mesh position={[6.2, 1.05, -4.0]}>
         <boxGeometry args={[2.2, 0.6, 2.4]} />
         <meshStandardMaterial color="#2b3348" emissive="#121a2a" roughness={0.45} />
+        <Edges scale={1.01} color="#6a8bff" />
       </mesh>
       <Text position={[6.2, 1.9, -4.0]} fontSize={0.34} color="#95b6ff" anchorX="center" anchorY="middle" billboard>
         CPU 1

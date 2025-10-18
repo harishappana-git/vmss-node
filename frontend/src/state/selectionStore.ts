@@ -1,5 +1,12 @@
 import { create } from 'zustand'
-import type { Breadcrumb, MemoryDescriptor, NodeSpec, Selection, SelectionKind } from '../types'
+import type {
+  Breadcrumb,
+  GPUSpec,
+  MemoryDescriptor,
+  NodeSpec,
+  Selection,
+  SelectionKind
+} from '../types'
 
 type ViewLevel = 'cluster' | 'node' | 'gpu'
 
@@ -10,6 +17,7 @@ type ExplorerState = {
   focusedNodeId?: string
   focusedGpuId?: string
   memoryInfo?: MemoryDescriptor
+  memoryBlueprint: MemoryBlueprint | null
   select: (selection: Selection | null, options?: { memoryInfo?: MemoryDescriptor }) => void
   enterNode: (node: NodeSpec, context: { clusterId: string; clusterLabel: string; rackId: string; rackLabel: string }) => void
   enterGpu: (
@@ -25,7 +33,26 @@ type ExplorerState = {
   ) => void
   goHome: () => void
   goToBreadcrumb: (index: number) => void
+  openMemoryBlueprint: (blueprint: MemoryBlueprint) => void
+  closeMemoryBlueprint: () => void
 }
+
+export type MemoryBlueprint =
+  | {
+      scope: 'node'
+      descriptor: MemoryDescriptor
+      node: NodeSpec
+      clusterName: string
+      rackName: string
+    }
+  | {
+      scope: 'gpu'
+      descriptor: MemoryDescriptor
+      node: NodeSpec
+      gpu: GPUSpec
+      clusterName: string
+      rackName: string
+    }
 
 function makeBreadcrumb(label: string, kind: SelectionKind | 'rack', id: string): Breadcrumb {
   return { label, kind, id }
@@ -38,11 +65,13 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
   focusedNodeId: undefined,
   focusedGpuId: undefined,
   memoryInfo: undefined,
-  select: (selection, options) =>
-    set({
-      selection,
-      memoryInfo: options?.memoryInfo
-    }),
+  memoryBlueprint: null,
+  select: (nextSelection, options) =>
+    set((state) => ({
+      selection: nextSelection,
+      memoryInfo: options?.memoryInfo,
+      memoryBlueprint: nextSelection?.kind === 'memory' ? state.memoryBlueprint : null
+    })),
   enterNode: (node, context) => {
     set({
       view: 'node',
@@ -50,6 +79,7 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
       focusedNodeId: node.id,
       focusedGpuId: undefined,
       memoryInfo: undefined,
+      memoryBlueprint: null,
       breadcrumbs: [
         makeBreadcrumb(context.clusterLabel, 'cluster', context.clusterId),
         makeBreadcrumb(context.rackLabel, 'rack', context.rackId),
@@ -64,6 +94,7 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
       focusedNodeId: context.node.id,
       focusedGpuId: gpu.id,
       memoryInfo: undefined,
+      memoryBlueprint: null,
       breadcrumbs: [
         makeBreadcrumb(context.clusterLabel, 'cluster', context.clusterId),
         makeBreadcrumb(context.rackLabel, 'rack', context.rackId),
@@ -79,6 +110,7 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
       focusedNodeId: undefined,
       focusedGpuId: undefined,
       memoryInfo: undefined,
+      memoryBlueprint: null,
       breadcrumbs: []
     })
   },
@@ -93,6 +125,7 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
         focusedNodeId: undefined,
         focusedGpuId: undefined,
         memoryInfo: undefined,
+        memoryBlueprint: null,
         breadcrumbs: crumbs.slice(0, index + 1)
       })
       return
@@ -104,6 +137,7 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
         focusedNodeId: undefined,
         focusedGpuId: undefined,
         memoryInfo: undefined,
+        memoryBlueprint: null,
         breadcrumbs: crumbs.slice(0, index + 1)
       })
       return
@@ -115,6 +149,7 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
         focusedNodeId: crumb.id,
         focusedGpuId: undefined,
         memoryInfo: undefined,
+        memoryBlueprint: null,
         breadcrumbs: crumbs.slice(0, index + 1)
       })
       return
@@ -127,8 +162,11 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
         focusedNodeId: priorNode?.id,
         focusedGpuId: crumb.id,
         memoryInfo: undefined,
+        memoryBlueprint: null,
         breadcrumbs: crumbs.slice(0, index + 1)
       })
     }
-  }
+  },
+  openMemoryBlueprint: (blueprint) => set({ memoryBlueprint: blueprint }),
+  closeMemoryBlueprint: () => set({ memoryBlueprint: null })
 }))

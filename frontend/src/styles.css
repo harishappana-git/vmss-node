@@ -223,3 +223,286 @@ button {
   left: 16px !important;
   top: 96px !important;
 }
+
+.memory-blueprint-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 18, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 25;
+  backdrop-filter: blur(12px);
+}
+
+.memory-blueprint {
+  width: min(720px, 82vw);
+  max-height: 88vh;
+  background: rgba(10, 18, 40, 0.95);
+  border: 1px solid rgba(90, 140, 255, 0.35);
+  border-radius: 20px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  box-shadow: 0 32px 80px rgba(0, 10, 40, 0.55);
+  color: #e7f0ff;
+}
+
+.memory-blueprint__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.memory-blueprint__header h2 {
+  margin: 0;
+  font-size: 1.15rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.memory-blueprint__subtitle {
+  margin: 0.35rem 0 0;
+  font-size: 0.78rem;
+  opacity: 0.7;
+  letter-spacing: 0.04em;
+}
+
+.memory-blueprint__close {
+  border: 1px solid rgba(130, 170, 255, 0.4);
+  background: rgba(30, 60, 120, 0.6);
+  color: #f3f6ff;
+  border-radius: 999px;
+  width: 2rem;
+  height: 2rem;
+  font-size: 1.3rem;
+  cursor: pointer;
+}
+
+.memory-blueprint__diagram {
+  border: 1px solid rgba(100, 150, 255, 0.3);
+  border-radius: 16px;
+  padding: 1.2rem;
+  background: radial-gradient(circle at 20% 20%, rgba(24, 46, 96, 0.8), rgba(10, 20, 48, 0.85));
+  display: grid;
+  gap: 1rem;
+  font-family: 'IBM Plex Mono', 'Menlo', monospace;
+  font-size: 0.75rem;
+  line-height: 1.3;
+}
+
+.memory-blueprint__diagram--node {
+  grid-template-columns: 1fr auto 1fr;
+  align-items: stretch;
+}
+
+.node-blueprint__column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.node-blueprint__cpu {
+  border: 1px solid rgba(120, 180, 255, 0.4);
+  border-radius: 12px;
+  padding: 0.65rem;
+  background: rgba(18, 34, 78, 0.65);
+  text-align: center;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.node-blueprint__dimms {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.node-blueprint__dimm {
+  border: 1px solid rgba(120, 210, 190, 0.35);
+  border-radius: 10px;
+  padding: 0.45rem 0.4rem;
+  background: rgba(16, 58, 50, 0.45);
+  text-align: center;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.node-blueprint__dimm.is-active {
+  border-color: rgba(120, 255, 220, 0.9);
+  background: rgba(24, 108, 90, 0.7);
+  box-shadow: 0 0 18px rgba(90, 220, 190, 0.55);
+}
+
+.node-blueprint__center {
+  display: grid;
+  gap: 0.75rem;
+  align-items: start;
+}
+
+.node-blueprint__nvlink,
+.node-blueprint__io {
+  border: 1px solid rgba(130, 170, 255, 0.4);
+  border-radius: 12px;
+  padding: 0.7rem;
+  background: rgba(24, 40, 90, 0.6);
+  text-align: center;
+  font-weight: 600;
+}
+
+.node-blueprint__gpus {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.node-blueprint__gpu {
+  border: 1px solid rgba(110, 170, 255, 0.35);
+  border-radius: 12px;
+  padding: 0.55rem 0.4rem;
+  background: rgba(26, 54, 120, 0.55);
+  text-align: center;
+}
+
+.node-blueprint__gpu span {
+  display: block;
+  font-size: 0.68rem;
+  opacity: 0.75;
+  margin-top: 0.25rem;
+}
+
+.memory-blueprint__diagram--gpu {
+  grid-template-columns: 1fr;
+  gap: 1.2rem;
+}
+
+.gpu-blueprint__board {
+  position: relative;
+  border: 1px dashed rgba(100, 150, 255, 0.45);
+  border-radius: 16px;
+  padding: 1.2rem 1rem 2.4rem;
+  background: rgba(18, 38, 80, 0.55);
+}
+
+.gpu-blueprint__die {
+  position: relative;
+  margin: 0 auto;
+  width: 260px;
+  height: 180px;
+  border: 1px solid rgba(150, 190, 255, 0.55);
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.gpu-blueprint__die.is-active {
+  border-color: rgba(180, 220, 255, 0.9);
+  box-shadow: 0 0 22px rgba(120, 180, 255, 0.6);
+}
+
+.gpu-blueprint__layer {
+  width: 80%;
+  padding: 0.4rem 0.6rem;
+  text-align: center;
+  border-radius: 10px;
+  border: 1px solid rgba(140, 210, 255, 0.35);
+  background: rgba(22, 60, 120, 0.45);
+  margin: 0.25rem 0;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.gpu-blueprint__layer.is-active {
+  border-color: rgba(200, 230, 255, 0.9);
+  background: rgba(36, 94, 180, 0.7);
+  box-shadow: 0 0 18px rgba(120, 190, 255, 0.55);
+}
+
+.gpu-blueprint__hbms {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  justify-content: space-between;
+  padding: 0.6rem 0.8rem;
+  pointer-events: none;
+}
+
+.gpu-blueprint__hbm {
+  width: 70px;
+  text-align: center;
+  font-size: 0.7rem;
+  margin: 0.2rem;
+  padding: 0.35rem 0;
+  border-radius: 10px;
+  border: 1px solid rgba(130, 210, 255, 0.3);
+  background: rgba(30, 80, 140, 0.4);
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.gpu-blueprint__hbm.is-active {
+  border-color: rgba(200, 250, 255, 0.9);
+  background: rgba(50, 110, 200, 0.7);
+  box-shadow: 0 0 18px rgba(140, 210, 255, 0.6);
+}
+
+.gpu-blueprint__nvlink {
+  position: absolute;
+  bottom: 0.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.4rem 0.6rem;
+  border-radius: 10px;
+  border: 1px dashed rgba(140, 190, 255, 0.4);
+  background: rgba(20, 48, 120, 0.5);
+  font-size: 0.7rem;
+  text-align: center;
+}
+
+.gpu-blueprint__meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.6rem;
+  margin: 0;
+}
+
+.gpu-blueprint__meta dt {
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.gpu-blueprint__meta dd {
+  margin: 0.25rem 0 0;
+  font-size: 0.7rem;
+  opacity: 0.75;
+}
+
+.memory-blueprint__details {
+  border-top: 1px solid rgba(110, 160, 255, 0.25);
+  padding-top: 0.9rem;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.memory-blueprint__details h3 {
+  margin: 0 0 0.4rem;
+  font-size: 0.9rem;
+  letter-spacing: 0.05em;
+}
+
+.memory-blueprint__details ul {
+  margin: 0.6rem 0 0;
+  padding-left: 1rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.memory-blueprint__footer {
+  margin-top: auto;
+  font-size: 0.72rem;
+  text-align: center;
+  opacity: 0.65;
+  letter-spacing: 0.04em;
+}

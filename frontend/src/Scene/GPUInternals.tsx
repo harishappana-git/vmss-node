@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react'
-import { Text } from '@react-three/drei'
+import { Edges, Text } from '@react-three/drei'
 import { Color, TorusGeometry, Vector3 } from 'three'
 import type { ThreeEvent } from '@react-three/fiber'
 import type { ClusterSpec, GPUSpec, MemoryDescriptor, NodeSpec, RackSpec } from '../types'
@@ -19,30 +19,50 @@ type HbmStackProps = {
   position: Vector3
   descriptor: MemoryDescriptor
   selected: boolean
+  node: NodeSpec
+  gpu: GPUSpec
+  cluster: ClusterSpec
+  rack: RackSpec
 }
 
-function HbmStack({ position, descriptor, selected }: HbmStackProps) {
+function HbmStack({ position, descriptor, selected, node, gpu, cluster, rack }: HbmStackProps) {
   const select = useExplorerStore((state) => state.select)
+  const openBlueprint = useExplorerStore((state) => state.openMemoryBlueprint)
 
   const handleClick = (event: ThreeEvent<MouseEvent>) => {
     event.stopPropagation()
     select({ kind: 'memory', id: descriptor.id }, { memoryInfo: descriptor })
   }
 
+  const handleDoubleClick = (event: ThreeEvent<MouseEvent>) => {
+    event.stopPropagation()
+    select({ kind: 'memory', id: descriptor.id }, { memoryInfo: descriptor })
+    openBlueprint({
+      scope: 'gpu',
+      descriptor,
+      node,
+      gpu,
+      clusterName: cluster.name,
+      rackName: rack.name
+    })
+  }
+
   return (
     <group
       position={position.toArray() as [number, number, number]}
       onClick={handleClick}
+      onDoubleClick={handleDoubleClick}
     >
       <mesh>
-        <cylinderGeometry args={[0.8, 0.8, 1.2, 24]} />
+        <cylinderGeometry args={[0.9, 0.9, 0.35, 32]} />
         <meshStandardMaterial
           color={selected ? hbmSelectedColor : hbmColor}
           emissive={selected ? '#2f6f9d' : '#1d4f7a'}
           roughness={0.4}
         />
+        <Edges scale={1.02} color="#b4e9ff" />
       </mesh>
-      <Text position={[0, 1, 0]} fontSize={0.28} color="#c8f2ff" anchorX="center" billboard>
+      <Text position={[0, 0.75, 0]} fontSize={0.28} color="#c8f2ff" anchorX="center" billboard>
         {descriptor.label}
       </Text>
     </group>
@@ -59,10 +79,29 @@ type MemoryRingProps = {
   y: number
   emissiveBase: string
   emissiveSelected: string
+  node: NodeSpec
+  gpu: GPUSpec
+  cluster: ClusterSpec
+  rack: RackSpec
 }
 
-function MemoryRing({ radius, thickness, color, descriptor, selected, label, y, emissiveBase, emissiveSelected }: MemoryRingProps) {
+function MemoryRing({
+  radius,
+  thickness,
+  color,
+  descriptor,
+  selected,
+  label,
+  y,
+  emissiveBase,
+  emissiveSelected,
+  node,
+  gpu,
+  cluster,
+  rack
+}: MemoryRingProps) {
   const select = useExplorerStore((state) => state.select)
+  const openBlueprint = useExplorerStore((state) => state.openMemoryBlueprint)
   const geometry = useMemo(() => new TorusGeometry(radius, thickness, 32, 64), [radius, thickness])
 
   useEffect(() => () => geometry.dispose(), [geometry])
@@ -72,9 +111,22 @@ function MemoryRing({ radius, thickness, color, descriptor, selected, label, y, 
     select({ kind: 'memory', id: descriptor.id }, { memoryInfo: descriptor })
   }
 
+  const handleDoubleClick = (event: ThreeEvent<MouseEvent>) => {
+    event.stopPropagation()
+    select({ kind: 'memory', id: descriptor.id }, { memoryInfo: descriptor })
+    openBlueprint({
+      scope: 'gpu',
+      descriptor,
+      node,
+      gpu,
+      clusterName: cluster.name,
+      rackName: rack.name
+    })
+  }
+
   return (
     <group>
-      <mesh geometry={geometry} rotation={[Math.PI / 2, 0, 0]} position={[0, y, 0]} onClick={handleClick}>
+      <mesh geometry={geometry} rotation={[Math.PI / 2, 0, 0]} position={[0, y, 0]} onClick={handleClick} onDoubleClick={handleDoubleClick}>
         <meshStandardMaterial
           color={selected ? color.clone().offsetHSL(0, 0, 0.12) : color}
           emissive={selected ? emissiveSelected : emissiveBase}
@@ -97,19 +149,50 @@ type MemoryPlateProps = {
   label: string
   emissiveBase: string
   emissiveSelected: string
+  node: NodeSpec
+  gpu: GPUSpec
+  cluster: ClusterSpec
+  rack: RackSpec
 }
 
-function MemoryPlate({ size, position, color, descriptor, selected, label, emissiveBase, emissiveSelected }: MemoryPlateProps) {
+function MemoryPlate({
+  size,
+  position,
+  color,
+  descriptor,
+  selected,
+  label,
+  emissiveBase,
+  emissiveSelected,
+  node,
+  gpu,
+  cluster,
+  rack
+}: MemoryPlateProps) {
   const select = useExplorerStore((state) => state.select)
+  const openBlueprint = useExplorerStore((state) => state.openMemoryBlueprint)
 
   const handleClick = (event: ThreeEvent<MouseEvent>) => {
     event.stopPropagation()
     select({ kind: 'memory', id: descriptor.id }, { memoryInfo: descriptor })
   }
 
+  const handleDoubleClick = (event: ThreeEvent<MouseEvent>) => {
+    event.stopPropagation()
+    select({ kind: 'memory', id: descriptor.id }, { memoryInfo: descriptor })
+    openBlueprint({
+      scope: 'gpu',
+      descriptor,
+      node,
+      gpu,
+      clusterName: cluster.name,
+      rackName: rack.name
+    })
+  }
+
   return (
     <group position={position}>
-      <mesh onClick={handleClick}>
+      <mesh onClick={handleClick} onDoubleClick={handleDoubleClick}>
         <boxGeometry args={size} />
         <meshStandardMaterial
           color={selected ? color.clone().offsetHSL(0, 0, 0.12) : color}
@@ -117,6 +200,7 @@ function MemoryPlate({ size, position, color, descriptor, selected, label, emiss
           roughness={0.35}
           metalness={0.15}
         />
+        <Edges scale={1.02} color="#e6ffe2" />
       </mesh>
       <Text position={[0, size[1] / 2 + 0.3, 0]} fontSize={0.28} color="#d6ffe8" anchorX="center" billboard>
         {label}
@@ -136,6 +220,8 @@ export function GPUInternals({ gpu, node, cluster, rack }: GPUInternalsProps) {
   const select = useExplorerStore((state) => state.select)
   const selection = useExplorerStore((state) => state.selection)
   const memoryInfo = useExplorerStore((state) => state.memoryInfo)
+  const openBlueprint = useExplorerStore((state) => state.openMemoryBlueprint)
+  const closeBlueprint = useExplorerStore((state) => state.closeMemoryBlueprint)
   const header = `${cluster.name} › ${rack.name} › ${node.hostname} › ${gpu.name}`
 
   useEffect(() => {
@@ -243,6 +329,7 @@ export function GPUInternals({ gpu, node, cluster, rack }: GPUInternalsProps) {
         onClick={(event) => {
           event.stopPropagation()
           select({ kind: 'gpu', id: gpu.uuid })
+          closeBlueprint()
         }}
       >
         <boxGeometry args={[6, 0.6, 6]} />
@@ -252,10 +339,12 @@ export function GPUInternals({ gpu, node, cluster, rack }: GPUInternalsProps) {
           roughness={0.6}
           metalness={0.2}
         />
+        <Edges scale={1.01} color="#4569ff" />
       </mesh>
       <mesh position={[0, 0.5, 0]}>
         <boxGeometry args={[4.4, 0.6, 4.4]} />
         <meshStandardMaterial color={dieColor} emissive="#153cff" roughness={0.45} metalness={0.5} />
+        <Edges scale={1.01} color="#6f88ff" />
       </mesh>
       <MemoryRing
         radius={4.8}
@@ -267,6 +356,10 @@ export function GPUInternals({ gpu, node, cluster, rack }: GPUInternalsProps) {
         y={0.8}
         emissiveBase="#ff7a1a"
         emissiveSelected="#fbd6a2"
+        node={node}
+        gpu={gpu}
+        cluster={cluster}
+        rack={rack}
       />
       <MemoryRing
         radius={3.2}
@@ -278,6 +371,10 @@ export function GPUInternals({ gpu, node, cluster, rack }: GPUInternalsProps) {
         y={1.05}
         emissiveBase="#d49c1f"
         emissiveSelected="#ffdf8a"
+        node={node}
+        gpu={gpu}
+        cluster={cluster}
+        rack={rack}
       />
       <MemoryPlate
         size={[2.6, 0.3, 2.6]}
@@ -288,6 +385,10 @@ export function GPUInternals({ gpu, node, cluster, rack }: GPUInternalsProps) {
         label="Register File"
         emissiveBase="#1d4d3c"
         emissiveSelected="#2f6f5c"
+        node={node}
+        gpu={gpu}
+        cluster={cluster}
+        rack={rack}
       />
       <MemoryPlate
         size={[1.6, 0.25, 1.6]}
@@ -298,6 +399,10 @@ export function GPUInternals({ gpu, node, cluster, rack }: GPUInternalsProps) {
         label="Tensor Memory Accelerator"
         emissiveBase="#44153b"
         emissiveSelected="#7c2d65"
+        node={node}
+        gpu={gpu}
+        cluster={cluster}
+        rack={rack}
       />
       {hbmDescriptors.map(({ descriptor, position }) => (
         <HbmStack
@@ -305,6 +410,10 @@ export function GPUInternals({ gpu, node, cluster, rack }: GPUInternalsProps) {
           position={position}
           descriptor={descriptor}
           selected={selectedMemoryId === descriptor.id}
+          node={node}
+          gpu={gpu}
+          cluster={cluster}
+          rack={rack}
         />
       ))}
       <Text position={[0, -1.2, 0]} fontSize={0.5} color="#9fb8ff" anchorX="center" anchorY="middle" billboard>
@@ -324,6 +433,27 @@ export function GPUInternals({ gpu, node, cluster, rack }: GPUInternalsProps) {
           {memoryInfo.label}: {memoryInfo.capacity}
         </Text>
       )}
+      <Text
+        position={[0, -3.8, 0]}
+        fontSize={0.3}
+        color="#6f8cff"
+        anchorX="center"
+        anchorY="middle"
+        billboard
+        onClick={(event) => {
+          event.stopPropagation()
+          openBlueprint({
+            scope: 'gpu',
+            descriptor: memoryInfo ?? l2Descriptor,
+            node,
+            gpu,
+            clusterName: cluster.name,
+            rackName: rack.name
+          })
+        }}
+      >
+        Double-click memory layers for blueprint · Click GPU body to dismiss
+      </Text>
     </group>
   )
 }

@@ -11,6 +11,7 @@ import { ZoomControls } from './ui/ZoomControls'
 import { LeftPanel } from './Panels/LeftPanel'
 import { useMetricsStream } from './hooks/useMetricsStream'
 import { CameraRig } from './lib/camera'
+import { MemoryBlueprintOverlay } from './ui/MemoryBlueprintOverlay'
 
 export default function App() {
   const { data } = useQuery<Topology>({ queryKey: ['topology'], queryFn: fetchTopology })
@@ -72,6 +73,7 @@ export default function App() {
         </Canvas>
         <ZoomControls />
         <LeftPanel topology={data} />
+        <MemoryBlueprintOverlay />
       </main>
       <footer className="app__footer">
         <p>
