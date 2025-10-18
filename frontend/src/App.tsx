@@ -1,17 +1,15 @@
-import { useMemo, useRef } from 'react'
-import { Canvas } from '@react-three/fiber'
-import { OrbitControls, PerspectiveCamera, StatsGl } from '@react-three/drei'
-import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
+import { useEffect, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useExplorerStore } from './state/selectionStore'
 import { fetchTopology } from './api/client'
 import type { Topology } from './types'
-import { SceneRoot } from './Scene/SceneRoot'
 import { ZoomControls } from './ui/ZoomControls'
 import { LeftPanel } from './Panels/LeftPanel'
 import { useMetricsStream } from './hooks/useMetricsStream'
-import { CameraRig } from './lib/camera'
 import { MemoryBlueprintOverlay } from './ui/MemoryBlueprintOverlay'
+import { BlueprintViewport } from './Blueprint/BlueprintViewport'
+import { BlueprintRoot } from './Blueprint/BlueprintRoot'
+import { useViewportStore } from './lib/viewport'
 
 export default function App() {
   const { data } = useQuery<Topology>({ queryKey: ['topology'], queryFn: fetchTopology })
@@ -21,7 +19,9 @@ export default function App() {
   const goToBreadcrumb = useExplorerStore((state) => state.goToBreadcrumb)
   const selection = useExplorerStore((state) => state.selection)
   const memoryInfo = useExplorerStore((state) => state.memoryInfo)
-  const controlsRef = useRef<OrbitControlsImpl>(null)
+  const view = useExplorerStore((state) => state.view)
+  const resetViewport = useViewportStore((state) => state.reset)
+  const fitViewport = useViewportStore((state) => state.fit)
 
   const breadcrumbNodes = useMemo(() => {
     if (!breadcrumbs.length) {
@@ -49,6 +49,14 @@ export default function App() {
     )
   }, [breadcrumbs, goHome, goToBreadcrumb])
 
+  useEffect(() => {
+    if (view === 'cluster') {
+      resetViewport()
+    } else {
+      fitViewport()
+    }
+  }, [fitViewport, resetViewport, view])
+
   if (!data) return null
 
   return (
@@ -61,16 +69,9 @@ export default function App() {
         <nav className="breadcrumbs">{breadcrumbNodes}</nav>
       </header>
       <main className="app__main">
-        <Canvas shadows frameloop="always" className="scene-canvas">
-          <color attach="background" args={[0.02, 0.02, 0.05]} />
-          <hemisphereLight intensity={0.45} groundColor={0x111111} />
-          <directionalLight position={[18, 28, 18]} intensity={1.4} castShadow />
-          <PerspectiveCamera makeDefault position={[32, 26, 32]} fov={45} />
-          <OrbitControls ref={controlsRef} enablePan enableZoom enableRotate />
-          <CameraRig controls={controlsRef} />
-          <SceneRoot topology={data} />
-          <StatsGl className="stats" />
-        </Canvas>
+        <BlueprintViewport>
+          <BlueprintRoot topology={data} />
+        </BlueprintViewport>
         <ZoomControls />
         <LeftPanel topology={data} />
         <MemoryBlueprintOverlay />

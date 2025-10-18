@@ -79,12 +79,28 @@ button {
 }
 
 .app__main {
+  position: relative;
   height: 100%;
+  overflow: hidden;
 }
 
-.scene-canvas {
+.blueprint-viewport {
+  position: absolute;
+  inset: 0;
+  cursor: grab;
+  overflow: hidden;
+}
+
+.blueprint-viewport__content {
   width: 100%;
   height: 100%;
+  transform-origin: 0 0;
+  transition: filter 0.2s ease;
+}
+
+.blueprint-viewport__content.is-panning {
+  cursor: grabbing;
+  filter: brightness(0.92);
 }
 
 .zoom-controls {
@@ -217,11 +233,6 @@ button {
   font-size: 0.75rem;
   letter-spacing: 0.04em;
   backdrop-filter: blur(12px);
-}
-
-.stats {
-  left: 16px !important;
-  top: 96px !important;
 }
 
 .memory-blueprint-overlay {
@@ -505,4 +516,245 @@ button {
   text-align: center;
   opacity: 0.65;
   letter-spacing: 0.04em;
+}
+
+.cluster-blueprint {
+  display: flex;
+  gap: 2rem;
+  padding: 6rem 6rem 4rem;
+  pointer-events: none;
+}
+
+.cluster-blueprint__cluster {
+  min-width: 540px;
+  background: rgba(6, 12, 26, 0.6);
+  border: 1px solid rgba(80, 130, 255, 0.25);
+  border-radius: 18px;
+  padding: 1.25rem 1.5rem 1.8rem;
+  box-shadow: 0 30px 70px rgba(0, 10, 40, 0.45);
+  pointer-events: auto;
+}
+
+.cluster-blueprint__cluster header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-bottom: 1rem;
+}
+
+.cluster-blueprint__cluster h2 {
+  margin: 0;
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.cluster-blueprint__cluster p {
+  margin: 0;
+  font-size: 0.75rem;
+  opacity: 0.7;
+  letter-spacing: 0.05em;
+}
+
+.cluster-blueprint__cluster svg {
+  width: 100%;
+  height: auto;
+}
+
+.cluster-blueprint__link {
+  stroke: rgba(100, 170, 255, 0.55);
+  fill: none;
+  stroke-dasharray: 6 4;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.cluster-blueprint__node {
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.cluster-blueprint__node rect {
+  fill: rgba(28, 48, 110, 0.85);
+  stroke: rgba(120, 180, 255, 0.45);
+  stroke-width: 2;
+  filter: drop-shadow(0 4px 12px rgba(12, 24, 60, 0.6));
+}
+
+.cluster-blueprint__node:hover rect {
+  fill: rgba(48, 86, 180, 0.92);
+  stroke: rgba(160, 210, 255, 0.8);
+}
+
+.cluster-blueprint__node.is-selected rect {
+  fill: rgba(70, 120, 255, 0.95);
+  stroke: rgba(210, 240, 255, 0.95);
+  stroke-width: 2.6;
+  filter: drop-shadow(0 0 20px rgba(90, 180, 255, 0.7));
+}
+
+.cluster-blueprint__node-title {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.cluster-blueprint__node-subtitle,
+.cluster-blueprint__node-metrics {
+  font-size: 0.62rem;
+  opacity: 0.75;
+  letter-spacing: 0.03em;
+}
+
+.cluster-blueprint__node-metrics {
+  font-family: 'IBM Plex Mono', 'Menlo', monospace;
+}
+
+.node-blueprint,
+.gpu-blueprint {
+  width: 100%;
+  height: 100%;
+  font-family: 'IBM Plex Mono', 'Menlo', monospace;
+}
+
+.node-blueprint text,
+.gpu-blueprint text {
+  fill: #dfe8ff;
+}
+
+.node-blueprint__title,
+.gpu-blueprint__title {
+  font-size: 0.95rem;
+  letter-spacing: 0.06em;
+}
+
+.node-blueprint__label,
+.node-blueprint__nvswitch-label,
+.node-blueprint__link-label,
+.gpu-blueprint__subtitle,
+.gpu-blueprint__metrics,
+.gpu-blueprint__nvlink {
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  opacity: 0.82;
+}
+
+.node-blueprint__chassis {
+  fill: rgba(18, 34, 70, 0.55);
+  stroke: rgba(100, 150, 255, 0.35);
+  stroke-width: 3;
+}
+
+.node-blueprint__cpu,
+.node-blueprint__nvswitch {
+  fill: rgba(36, 62, 120, 0.72);
+  stroke: rgba(140, 200, 255, 0.45);
+  stroke-width: 2;
+}
+
+.node-blueprint__metrics {
+  font-family: 'IBM Plex Mono', 'Menlo', monospace;
+  font-size: 0.65rem;
+  opacity: 0.8;
+}
+
+.node-blueprint__dimm rect {
+  fill: rgba(20, 66, 60, 0.7);
+  stroke: rgba(110, 210, 190, 0.5);
+  stroke-width: 2;
+  cursor: pointer;
+}
+
+.node-blueprint__dimm text {
+  font-size: 0.55rem;
+  pointer-events: none;
+}
+
+.node-blueprint__dimm.is-selected rect,
+.node-blueprint__dimm rect:hover {
+  fill: rgba(40, 116, 100, 0.85);
+  stroke: rgba(160, 255, 220, 0.85);
+  box-shadow: 0 0 16px rgba(120, 220, 190, 0.5);
+}
+
+.node-blueprint__gpu rect {
+  fill: rgba(30, 58, 124, 0.7);
+  stroke: rgba(110, 170, 255, 0.45);
+  stroke-width: 2;
+  cursor: pointer;
+}
+
+.node-blueprint__gpu-title {
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.node-blueprint__gpu-subtitle {
+  font-size: 0.6rem;
+  opacity: 0.75;
+}
+
+.node-blueprint__gpu.is-selected rect,
+.node-blueprint__gpu rect:hover {
+  fill: rgba(60, 108, 200, 0.85);
+  stroke: rgba(180, 220, 255, 0.9);
+}
+
+.gpu-blueprint__board {
+  fill: rgba(16, 34, 68, 0.6);
+  stroke: rgba(110, 160, 255, 0.35);
+  stroke-width: 3;
+}
+
+.gpu-blueprint__subtitle,
+.gpu-blueprint__metrics {
+  font-family: 'IBM Plex Mono', 'Menlo', monospace;
+}
+
+.gpu-blueprint__hbm rect {
+  fill: rgba(30, 68, 140, 0.72);
+  stroke: rgba(130, 200, 255, 0.45);
+  stroke-width: 2;
+  cursor: pointer;
+}
+
+.gpu-blueprint__hbm text {
+  font-size: 0.55rem;
+  pointer-events: none;
+}
+
+.gpu-blueprint__hbm.is-selected rect,
+.gpu-blueprint__hbm rect:hover {
+  fill: rgba(60, 118, 210, 0.85);
+  stroke: rgba(200, 240, 255, 0.9);
+}
+
+.gpu-blueprint__die rect {
+  fill: rgba(28, 40, 90, 0.8);
+  stroke: rgba(150, 200, 255, 0.5);
+  stroke-width: 2;
+}
+
+.gpu-blueprint__layer rect {
+  fill: rgba(36, 70, 140, 0.7);
+  stroke: rgba(150, 210, 255, 0.45);
+  stroke-width: 2;
+  cursor: pointer;
+}
+
+.gpu-blueprint__layer text {
+  font-size: 0.6rem;
+  pointer-events: none;
+}
+
+.gpu-blueprint__layer.is-selected rect,
+.gpu-blueprint__layer rect:hover {
+  fill: rgba(70, 126, 220, 0.85);
+  stroke: rgba(210, 240, 255, 0.95);
+}
+
+.gpu-blueprint__nvlink {
+  font-size: 0.64rem;
+  letter-spacing: 0.04em;
+  opacity: 0.8;
 }

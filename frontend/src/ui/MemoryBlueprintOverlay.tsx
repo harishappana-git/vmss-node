@@ -156,7 +156,7 @@ export function MemoryBlueprintOverlay() {
             )}
           </ul>
         </section>
-        <footer className="memory-blueprint__footer">Double-click another component or press close to exit the 2D blueprint view.</footer>
+        <footer className="memory-blueprint__footer">Click another component or press close to exit the 2D blueprint view.</footer>
       </div>
     </div>
   )

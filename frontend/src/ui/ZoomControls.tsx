@@ -1,7 +1,7 @@
-import { useCameraTools } from '../lib/camera'
+import { useViewportTools } from '../lib/viewport'
 
 export function ZoomControls() {
-  const { zoomIn, zoomOut, zoomHome, zoomFit } = useCameraTools()
+  const { zoomIn, zoomOut, zoomHome, zoomFit } = useViewportTools()
   return (
     <div className="zoom-controls">
       <button type="button" onClick={zoomIn} aria-label="Zoom in">
