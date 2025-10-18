@@ -19,6 +19,7 @@ export default function App() {
   const goHome = useExplorerStore((state) => state.goHome)
   const goToBreadcrumb = useExplorerStore((state) => state.goToBreadcrumb)
   const selection = useExplorerStore((state) => state.selection)
+  const memoryInfo = useExplorerStore((state) => state.memoryInfo)
   const controlsRef = useRef<OrbitControlsImpl>(null)
 
   const breadcrumbNodes = useMemo(() => {
@@ -73,7 +74,14 @@ export default function App() {
         <LeftPanel topology={data} />
       </main>
       <footer className="app__footer">
-        <p>Selection: {selection ? `${selection.kind.toUpperCase()} – ${selection.id}` : 'None'}</p>
+        <p>
+          Selection:{' '}
+          {selection
+            ? selection.kind === 'memory' && memoryInfo
+              ? `${selection.kind.toUpperCase()} – ${memoryInfo.label}`
+              : `${selection.kind.toUpperCase()} – ${selection.id}`
+            : 'None'}
+        </p>
       </footer>
     </div>
   )

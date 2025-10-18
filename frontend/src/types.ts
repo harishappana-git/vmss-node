@@ -71,11 +71,22 @@ export type Topology = {
   clusters: ClusterSpec[]
 }
 
-export type SelectionKind = 'cluster' | 'rack' | 'node' | 'gpu' | 'link'
+export type SelectionKind = 'cluster' | 'rack' | 'node' | 'gpu' | 'link' | 'memory'
 
 export type Selection = {
   kind: SelectionKind
   id: string
+}
+
+export type MemoryDescriptor = {
+  id: string
+  scope: 'node' | 'gpu'
+  parentId: string
+  label: string
+  type: string
+  capacity: string
+  bandwidth?: string
+  description: string
 }
 
 export type Breadcrumb = {

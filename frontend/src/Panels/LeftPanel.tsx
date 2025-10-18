@@ -29,6 +29,7 @@ function formatNumber(value?: number, unit: string) {
 
 export function LeftPanel({ topology }: LeftPanelProps) {
   const selection = useExplorerStore((state) => state.selection)
+  const memoryInfo = useExplorerStore((state) => state.memoryInfo)
   const [tab, setTab] = useState<(typeof tabs)[number]>('overview')
 
   const context = useMemo(() => {
@@ -37,24 +38,36 @@ export function LeftPanel({ topology }: LeftPanelProps) {
       for (const rack of cluster.racks) {
         for (const node of rack.nodes) {
           if (selection.kind === 'node' && node.id === selection.id) {
-            return { cluster, rack, node, gpu: undefined }
+            return { cluster, rack, node, gpu: undefined, memory: undefined }
           }
           if (selection.kind === 'gpu') {
             const gpu = node.gpus.find((g) => g.uuid === selection.id)
             if (gpu) {
-              return { cluster, rack, node, gpu }
+              return { cluster, rack, node, gpu, memory: undefined }
+            }
+          }
+          if (selection.kind === 'memory' && memoryInfo) {
+            if (memoryInfo.scope === 'node' && node.id === memoryInfo.parentId) {
+              return { cluster, rack, node, gpu: undefined, memory: memoryInfo }
+            }
+            if (memoryInfo.scope === 'gpu') {
+              const gpu = node.gpus.find((g) => g.uuid === memoryInfo.parentId)
+              if (gpu) {
+                return { cluster, rack, node, gpu, memory: memoryInfo }
+              }
             }
           }
         }
       }
     }
     return null
-  }, [selection, topology])
+  }, [memoryInfo, selection, topology])
 
   const node = context?.node
   const gpu = context?.gpu
+  const memory = context?.memory
   const nodeId = node?.id
-  const gpuId = gpu?.uuid
+  const gpuId = gpu?.uuid ?? (memory?.scope === 'gpu' ? memory.parentId : undefined)
   const nodeMetrics = useMetricsStore((state) => (nodeId ? state.node[nodeId] : undefined))
   const gpuMetrics = useMetricsStore((state) => (gpuId ? state.gpu[gpuId] : undefined))
 
@@ -99,23 +112,87 @@ export function LeftPanel({ topology }: LeftPanelProps) {
   })
 
   const jsonPayload = useMemo(() => {
+    if (memory) return memory
     if (gpu) return gpu
     if (node) return node
     return selection ?? null
-  }, [gpu, node, selection])
+  }, [gpu, memory, node, selection])
 
-  if (!selection || (!node && !gpu)) {
+  if (!selection || (!node && !gpu && !memory)) {
     return (
       <aside className="left-panel">
         <header>
           <h2>Selection</h2>
         </header>
-        <p>Select a node or GPU to inspect Blackwell defaults.</p>
+        <p>Select a node, GPU, or memory component to inspect Blackwell defaults.</p>
       </aside>
     )
   }
 
   const renderOverview = () => {
+    if (memory && node) {
+      const isGpuMemory = memory.scope === 'gpu'
+      return (
+        <ul>
+          <li>
+            <strong>Component</strong> {memory.label}
+          </li>
+          <li>
+            <strong>Type</strong> {memory.type}
+          </li>
+          <li>
+            <strong>Capacity</strong> {memory.capacity}
+          </li>
+          {memory.bandwidth && (
+            <li>
+              <strong>Bandwidth</strong> {memory.bandwidth}
+            </li>
+          )}
+          <li>
+            <strong>Belongs To</strong> {isGpuMemory && gpu ? `${gpu.name} (${gpu.model})` : node.hostname}
+          </li>
+          <li>
+            <strong>Description</strong> {memory.description}
+          </li>
+          {isGpuMemory && gpuMetrics && (
+            <>
+              <li>
+                <strong>HBM Used</strong> {`${gpuMetrics.memUsedGB.toFixed(1)} GB / ${(gpu?.memoryGB ?? 0).toFixed(0)} GB`}
+              </li>
+              <li>
+                <strong>Utilization</strong> {formatPercent(gpuMetrics.util)}
+              </li>
+              <li>
+                <strong>Temp</strong> {`${gpuMetrics.tempC.toFixed(1)} °C`}
+              </li>
+              <li>
+                <strong>Power</strong> {`${gpuMetrics.powerW.toFixed(0)} W`}
+              </li>
+              <li>
+                <strong>NVLink</strong> {formatNumber(gpuMetrics.nvlinkGBs, 'GB/s')}
+              </li>
+            </>
+          )}
+          {!isGpuMemory && nodeMetrics && (
+            <>
+              <li>
+                <strong>System RAM Used</strong> {`${nodeMetrics.memoryUsedGB.toFixed(1)} GB / ${node.systemMemoryGB} GB`}
+              </li>
+              <li>
+                <strong>CPU Util</strong> {formatPercent(nodeMetrics.cpuUtil)}
+              </li>
+              <li>
+                <strong>InfiniBand</strong> {formatNumber(nodeMetrics.ibUtilGbps, 'Gb/s')}
+              </li>
+              <li>
+                <strong>Active Jobs</strong> {nodeMetrics.jobsRunning}
+              </li>
+            </>
+          )}
+        </ul>
+      )
+    }
+
     if (gpu && node) {
       return (
         <ul>
@@ -258,8 +335,16 @@ export function LeftPanel({ topology }: LeftPanelProps) {
   return (
     <aside className="left-panel">
       <header>
-        <h2>{gpu ? gpu.name : node?.hostname}</h2>
-        <p>{gpu ? 'B200 internal view' : 'DGX B200 node summary'}</p>
+        <h2>{memory ? memory.label : gpu ? gpu.name : node?.hostname}</h2>
+        <p>
+          {memory
+            ? memory.scope === 'gpu'
+              ? 'GPU memory component detail'
+              : 'Node memory component detail'
+            : gpu
+            ? 'B200 internal view'
+            : 'DGX B200 node summary'}
+        </p>
       </header>
       <nav>
         {tabs.map((item) => (

@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Breadcrumb, NodeSpec, Selection, SelectionKind } from '../types'
+import type { Breadcrumb, MemoryDescriptor, NodeSpec, Selection, SelectionKind } from '../types'
 
 type ViewLevel = 'cluster' | 'node' | 'gpu'
 
@@ -9,7 +9,8 @@ type ExplorerState = {
   breadcrumbs: Breadcrumb[]
   focusedNodeId?: string
   focusedGpuId?: string
-  select: (selection: Selection | null) => void
+  memoryInfo?: MemoryDescriptor
+  select: (selection: Selection | null, options?: { memoryInfo?: MemoryDescriptor }) => void
   enterNode: (node: NodeSpec, context: { clusterId: string; clusterLabel: string; rackId: string; rackLabel: string }) => void
   enterGpu: (
     gpu: Selection,
@@ -36,13 +37,19 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
   breadcrumbs: [],
   focusedNodeId: undefined,
   focusedGpuId: undefined,
-  select: (selection) => set({ selection }),
+  memoryInfo: undefined,
+  select: (selection, options) =>
+    set({
+      selection,
+      memoryInfo: options?.memoryInfo
+    }),
   enterNode: (node, context) => {
     set({
       view: 'node',
       selection: { kind: 'node', id: node.id },
       focusedNodeId: node.id,
       focusedGpuId: undefined,
+      memoryInfo: undefined,
       breadcrumbs: [
         makeBreadcrumb(context.clusterLabel, 'cluster', context.clusterId),
         makeBreadcrumb(context.rackLabel, 'rack', context.rackId),
@@ -56,6 +63,7 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
       selection: { kind: 'gpu', id: gpu.id },
       focusedNodeId: context.node.id,
       focusedGpuId: gpu.id,
+      memoryInfo: undefined,
       breadcrumbs: [
         makeBreadcrumb(context.clusterLabel, 'cluster', context.clusterId),
         makeBreadcrumb(context.rackLabel, 'rack', context.rackId),
@@ -65,18 +73,39 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
     })
   },
   goHome: () => {
-    set({ view: 'cluster', selection: null, focusedNodeId: undefined, focusedGpuId: undefined, breadcrumbs: [] })
+    set({
+      view: 'cluster',
+      selection: null,
+      focusedNodeId: undefined,
+      focusedGpuId: undefined,
+      memoryInfo: undefined,
+      breadcrumbs: []
+    })
   },
   goToBreadcrumb: (index) => {
     const crumbs = get().breadcrumbs
     const crumb = crumbs[index]
     if (!crumb) return
     if (crumb.kind === 'cluster') {
-      set({ view: 'cluster', selection: { kind: 'cluster', id: crumb.id }, focusedNodeId: undefined, focusedGpuId: undefined, breadcrumbs: crumbs.slice(0, index + 1) })
+      set({
+        view: 'cluster',
+        selection: { kind: 'cluster', id: crumb.id },
+        focusedNodeId: undefined,
+        focusedGpuId: undefined,
+        memoryInfo: undefined,
+        breadcrumbs: crumbs.slice(0, index + 1)
+      })
       return
     }
     if (crumb.kind === 'rack') {
-      set({ view: 'cluster', selection: { kind: 'rack', id: crumb.id }, focusedNodeId: undefined, focusedGpuId: undefined, breadcrumbs: crumbs.slice(0, index + 1) })
+      set({
+        view: 'cluster',
+        selection: { kind: 'rack', id: crumb.id },
+        focusedNodeId: undefined,
+        focusedGpuId: undefined,
+        memoryInfo: undefined,
+        breadcrumbs: crumbs.slice(0, index + 1)
+      })
       return
     }
     if (crumb.kind === 'node') {
@@ -85,6 +114,7 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
         selection: { kind: 'node', id: crumb.id },
         focusedNodeId: crumb.id,
         focusedGpuId: undefined,
+        memoryInfo: undefined,
         breadcrumbs: crumbs.slice(0, index + 1)
       })
       return
@@ -96,6 +126,7 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
         selection: { kind: 'gpu', id: crumb.id },
         focusedNodeId: priorNode?.id,
         focusedGpuId: crumb.id,
+        memoryInfo: undefined,
         breadcrumbs: crumbs.slice(0, index + 1)
       })
     }
