@@ -2,8 +2,6 @@ import { useMemo } from 'react'
 import { Line } from '@react-three/drei'
 import type { ClusterSpec, NodeSpec, Topology } from '../types'
 import { useExplorerStore } from '../state/selectionStore'
-import { focusOn } from '../lib/camera'
-import { Vector3 } from 'three'
 import type { ThreeEvent } from '@react-three/fiber'
 
 type Props = {
@@ -16,8 +14,6 @@ type PositionedNode = {
   rackId: string
   cluster: ClusterSpec
 }
-
-const temp = new Vector3()
 
 function computeNodePosition(clusterIndex: number, rackIndex: number, slot: number): [number, number, number] {
   const clusterSpacing = 36
@@ -43,10 +39,6 @@ function NodeChassis({ positioned }: { positioned: PositionedNode }) {
   const onDoubleClick = (event: ThreeEvent<MouseEvent>) => {
     event.stopPropagation()
     select({ kind: 'node', id: positioned.node.id })
-    event.eventObject.getWorldPosition(temp)
-    const target: [number, number, number] = [temp.x, temp.y, temp.z]
-    const camera: [number, number, number] = [temp.x + 8, temp.y + 6, temp.z + 8]
-    focusOn(camera, target, 38)
     enterNode(positioned.node, {
       clusterId: positioned.cluster.id,
       clusterLabel: positioned.cluster.name,

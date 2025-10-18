@@ -3,7 +3,6 @@ import { Text } from '@react-three/drei'
 import { Color, QuadraticBezierCurve3, TubeGeometry, Vector3 } from 'three'
 import type { ClusterSpec, NodeSpec, RackSpec } from '../types'
 import { useExplorerStore } from '../state/selectionStore'
-import { focusOn } from '../lib/camera'
 import type { ThreeEvent } from '@react-three/fiber'
 
 const nvlinkColor = new Color('#f6c255')
@@ -32,8 +31,6 @@ type NodeSceneProps = {
   cluster: ClusterSpec
   rack: RackSpec
 }
-
-const temp = new Vector3()
 
 export function NodeScene({ node, cluster, rack }: NodeSceneProps) {
   const select = useExplorerStore((state) => state.select)
@@ -73,10 +70,6 @@ export function NodeScene({ node, cluster, rack }: NodeSceneProps) {
         const handleDoubleClick = (event: ThreeEvent<MouseEvent>) => {
           event.stopPropagation()
           select({ kind: 'gpu', id: gpu.uuid })
-          event.eventObject.getWorldPosition(temp)
-          const target: [number, number, number] = [temp.x, temp.y, temp.z]
-          const camera: [number, number, number] = [temp.x + 4, temp.y + 3, temp.z + 4]
-          focusOn(camera, target, 36)
           enterGpu(
             { kind: 'gpu', id: gpu.uuid },
             {

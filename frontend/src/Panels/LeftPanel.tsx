@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import type { Topology } from '../types'
 import { useExplorerStore } from '../state/selectionStore'
+import { useMetricsStore } from '../state/metricsStore'
 
 const tabs = ['overview', 'links', 'json'] as const
 
@@ -14,6 +15,16 @@ function formatGbps(value: number) {
 
 function formatTbs(value: number) {
   return `${value.toFixed(1)} TB/s`
+}
+
+function formatPercent(value?: number) {
+  if (value === undefined) return '—'
+  return `${(value * 100).toFixed(0)}%`
+}
+
+function formatNumber(value?: number, unit: string) {
+  if (value === undefined) return '—'
+  return `${value.toFixed(1)} ${unit}`
 }
 
 export function LeftPanel({ topology }: LeftPanelProps) {
@@ -42,6 +53,10 @@ export function LeftPanel({ topology }: LeftPanelProps) {
 
   const node = context?.node
   const gpu = context?.gpu
+  const nodeId = node?.id
+  const gpuId = gpu?.uuid
+  const nodeMetrics = useMetricsStore((state) => (nodeId ? state.node[nodeId] : undefined))
+  const gpuMetrics = useMetricsStore((state) => (gpuId ? state.gpu[gpuId] : undefined))
 
   const ibLinks = useMemo(() => {
     if (!node) return []
@@ -71,6 +86,17 @@ export function LeftPanel({ topology }: LeftPanelProps) {
       }
     ]
   }, [gpu, node])
+
+  const linkMetrics = useMetricsStore((state) => {
+    const result: Record<string, { bw?: number; rtt?: number }> = {}
+    ibLinks.forEach((link) => {
+      const metric = state.link[link.id]
+      if (metric) {
+        result[link.id] = { bw: metric.bwGbps, rtt: metric.rttUs }
+      }
+    })
+    return result
+  })
 
   const jsonPayload = useMemo(() => {
     if (gpu) return gpu
@@ -108,6 +134,21 @@ export function LeftPanel({ topology }: LeftPanelProps) {
           <li>
             <strong>L2 Cache</strong> {gpu.l2CacheMB ? `${gpu.l2CacheMB} MB (Blackwell class reference)` : 'Blackwell enlarged L2 cache'}
           </li>
+          <li>
+            <strong>Utilization</strong> {formatPercent(gpuMetrics?.util)}
+          </li>
+          <li>
+            <strong>HBM Used</strong> {gpuMetrics ? `${gpuMetrics.memUsedGB.toFixed(1)} GB` : '—'}
+          </li>
+          <li>
+            <strong>NVLink</strong> {gpuMetrics ? formatNumber(gpuMetrics.nvlinkGBs, 'GB/s') : '—'}
+          </li>
+          <li>
+            <strong>Temp</strong> {gpuMetrics ? `${gpuMetrics.tempC.toFixed(1)} °C` : '—'}
+          </li>
+          <li>
+            <strong>Power</strong> {gpuMetrics ? `${gpuMetrics.powerW.toFixed(0)} W` : '—'}
+          </li>
         </ul>
       )
     }
@@ -141,6 +182,18 @@ export function LeftPanel({ topology }: LeftPanelProps) {
           </li>
           <li>
             <strong>Storage</strong> {node.storage.os}
+          </li>
+          <li>
+            <strong>CPU Util</strong> {formatPercent(nodeMetrics?.cpuUtil)}
+          </li>
+          <li>
+            <strong>System RAM Used</strong> {nodeMetrics ? `${nodeMetrics.memoryUsedGB.toFixed(1)} GB` : '—'}
+          </li>
+          <li>
+            <strong>InfiniBand</strong> {nodeMetrics ? formatNumber(nodeMetrics.ibUtilGbps, 'Gb/s') : '—'}
+          </li>
+          <li>
+            <strong>Active Jobs</strong> {nodeMetrics ? nodeMetrics.jobsRunning : '—'}
           </li>
         </ul>
       )
@@ -180,16 +233,23 @@ export function LeftPanel({ topology }: LeftPanelProps) {
             <th>Type</th>
             <th>Capacity</th>
             <th>Peer</th>
+            <th>Live BW</th>
+            <th>Latency</th>
           </tr>
         </thead>
         <tbody>
-          {ibLinks.map((link) => (
-            <tr key={link.id}>
-              <td>{link.type}</td>
-              <td>{link.capacity}</td>
-              <td>{link.peer}</td>
-            </tr>
-          ))}
+          {ibLinks.map((link) => {
+            const metric = linkMetrics[link.id]
+            return (
+              <tr key={link.id}>
+                <td>{link.type}</td>
+                <td>{link.capacity}</td>
+                <td>{link.peer}</td>
+                <td>{metric?.bw !== undefined ? `${metric.bw.toFixed(1)} Gb/s` : '—'}</td>
+                <td>{metric?.rtt !== undefined ? `${metric.rtt.toFixed(2)} µs` : '—'}</td>
+              </tr>
+            )
+          })}
         </tbody>
       </table>
     )
