@@ -1,36 +1,87 @@
-export type GPU = {
-  uuid: string
-  model: string
-  mig: { enabled: boolean; instances: string[] }
-  nvlinkPeers?: string[]
-}
-
-export type Node = {
+export type IBLink = {
   id: string
-  hostname: string
-  gpus: GPU[]
-  ib: { portGuid: string; speedGbps: number; health: string; utilization: number }
-}
-
-export type Link = {
-  id: string
-  type: 'IB' | 'NVLINK'
   from: string
   to: string
+  type: 'IB'
   capacityGbps: number
 }
 
-export type Rack = { id: string; nodes: Node[] }
-
-export type Cluster = {
+export type NVLink = {
   id: string
-  racks: Rack[]
+  from: string
+  to: string
+  type: 'NVLINK'
+  capacityGBs: number
+}
+
+export type Link = IBLink | NVLink
+
+export type MigProfile = {
+  name: string
+  memoryGB: number
+  smShare: string
+}
+
+export type GPUSpec = {
+  uuid: string
+  name: string
+  model: 'B200'
+  memoryGB: number
+  hbmBandwidthTBs: number
+  nvlinkTBs: number
+  migSupported: boolean
+  migGuide?: string
+  l2CacheMB?: number
+  powerTargetW?: number
+}
+
+export type NodeSpec = {
+  id: string
+  hostname: string
+  vendor: 'NVIDIA'
+  model: 'DGX B200'
+  rackPosition: number
+  cpu: { model: 'Intel Xeon 8570'; sockets: number; coresTotal: number }
+  systemMemoryGB: number
+  gpus: GPUSpec[]
+  nvlinkSwitchId: string
+  nvlinkSwitchAggregateTBs: number
+  networking: {
+    nics: { model: 'ConnectX-7'; speedGbps: number; count: number }[]
+    dpus: { model: 'BlueField-3'; ports: number }[]
+  }
+  storage: { os: string; data?: string }
+}
+
+export type RackSpec = {
+  id: string
+  name: string
+  nodes: NodeSpec[]
+}
+
+export type ClusterSpec = {
+  id: string
+  name: string
+  racks: RackSpec[]
   links: Link[]
 }
 
 export type Topology = {
-  regionId: string
-  clusters: Cluster[]
+  name: string
+  clusters: ClusterSpec[]
+}
+
+export type SelectionKind = 'cluster' | 'rack' | 'node' | 'gpu' | 'link'
+
+export type Selection = {
+  kind: SelectionKind
+  id: string
+}
+
+export type Breadcrumb = {
+  label: string
+  kind: SelectionKind | 'rack'
+  id: string
 }
 
 export type GPUFrame = {
