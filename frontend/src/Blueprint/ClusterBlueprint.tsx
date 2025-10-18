@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
-import type { Topology } from '../types'
+import type { KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent } from 'react'
+import type { ClusterSpec, NodeSpec, RackSpec, Topology } from '../types'
 import { useExplorerStore } from '../state/selectionStore'
 import { useMetricsStore } from '../state/metricsStore'
 
@@ -13,6 +14,26 @@ export function ClusterBlueprint({ topology }: { topology: Topology }) {
   const enterNode = useExplorerStore((state) => state.enterNode)
   const selection = useExplorerStore((state) => state.selection)
   const nodeMetrics = useMetricsStore((state) => state.node)
+
+  const activateNode = (
+    node: NodeSpec,
+    rack: RackSpec,
+    cluster: ClusterSpec,
+    event: ReactMouseEvent<SVGGElement> | ReactKeyboardEvent<SVGGElement>
+  ) => {
+    if ('key' in event) {
+      if (event.key !== 'Enter' && event.key !== ' ') {
+        return
+      }
+      event.preventDefault()
+    }
+    enterNode(node, {
+      clusterId: cluster.id,
+      clusterLabel: cluster.name,
+      rackId: rack.id,
+      rackLabel: rack.name
+    })
+  }
 
   const layouts = useMemo(() => {
     return topology.clusters.map((cluster) => {
@@ -84,20 +105,17 @@ export function ClusterBlueprint({ topology }: { topology: Topology }) {
                       key={node.id}
                       className={`cluster-blueprint__node${isSelected ? ' is-selected' : ''}`}
                       transform={`translate(${position.x}, ${position.y})`}
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`${node.hostname} node in rack ${rack.name}`}
+                      onClick={(event) => activateNode(node, rack, cluster, event)}
+                      onKeyDown={(event) => activateNode(node, rack, cluster, event)}
                     >
                       <rect
                         width={NODE_WIDTH}
                         height={NODE_HEIGHT}
                         rx={10}
                         ry={10}
-                        onClick={() =>
-                          enterNode(node, {
-                            clusterId: cluster.id,
-                            clusterLabel: cluster.name,
-                            rackId: rack.id,
-                            rackLabel: rack.name
-                          })
-                        }
                       >
                         <title>{`${node.hostname} — 8× B200 · 4 TB RAM`}</title>
                       </rect>
