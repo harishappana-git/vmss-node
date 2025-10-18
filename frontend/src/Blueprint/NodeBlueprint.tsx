@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import type { ClusterSpec, MemoryDescriptor, NodeSpec, RackSpec } from '../types'
 import { useExplorerStore } from '../state/selectionStore'
 import { useMetricsStore } from '../state/metricsStore'
+import { verboseLog } from '../lib/logging'
 
 const VIEWBOX_WIDTH = 960
 const VIEWBOX_HEIGHT = 600
@@ -70,6 +71,12 @@ export function NodeBlueprint({ node, cluster, rack }: NodeBlueprintProps) {
   const handleGpuClick = (gpuId: string) => {
     const gpu = node.gpus.find((item) => item.uuid === gpuId)
     if (!gpu) return
+    verboseLog('node blueprint gpu selected', {
+      gpuId,
+      nodeId: node.id,
+      clusterId: cluster.id,
+      rackId: rack.id
+    })
     enterGpu(
       { kind: 'gpu', id: gpu.uuid },
       {
@@ -84,6 +91,11 @@ export function NodeBlueprint({ node, cluster, rack }: NodeBlueprintProps) {
   }
 
   const handleMemoryClick = (descriptor: MemoryDescriptor) => {
+    verboseLog('node blueprint memory selected', {
+      memoryId: descriptor.id,
+      nodeId: node.id,
+      label: descriptor.label
+    })
     select({ kind: 'memory', id: descriptor.id }, { memoryInfo: descriptor })
     openMemoryBlueprint({
       scope: 'node',
@@ -127,7 +139,12 @@ export function NodeBlueprint({ node, cluster, rack }: NodeBlueprintProps) {
       {dimmPositions.map(({ descriptor, x, y }) => {
         const isSelected = selection?.kind === 'memory' && selection.id === descriptor.id
         return (
-          <g key={descriptor.id} transform={`translate(${x}, ${y})`} className={`node-blueprint__dimm${isSelected ? ' is-selected' : ''}`}>
+          <g
+            key={descriptor.id}
+            transform={`translate(${x}, ${y})`}
+            className={`node-blueprint__dimm${isSelected ? ' is-selected' : ''}`}
+            data-blueprint-interactive="true"
+          >
             <rect width={DIMM_WIDTH} height={DIMM_HEIGHT} rx={6} ry={6} onClick={() => handleMemoryClick(descriptor)}>
               <title>{descriptor.label} · {descriptor.capacity}</title>
             </rect>
@@ -141,7 +158,12 @@ export function NodeBlueprint({ node, cluster, rack }: NodeBlueprintProps) {
         const metrics = gpuMetrics[gpu.uuid]
         const isSelected = selection?.kind === 'gpu' && selection.id === gpu.uuid
         return (
-          <g key={gpu.uuid} transform={`translate(${x}, ${y})`} className={`node-blueprint__gpu${isSelected ? ' is-selected' : ''}`}>
+          <g
+            key={gpu.uuid}
+            transform={`translate(${x}, ${y})`}
+            className={`node-blueprint__gpu${isSelected ? ' is-selected' : ''}`}
+            data-blueprint-interactive="true"
+          >
             <rect width={GPU_WIDTH} height={GPU_HEIGHT} rx={14} ry={14} onClick={() => handleGpuClick(gpu.uuid)}>
               <title>{gpu.name} · {gpu.memoryGB} GB HBM3e</title>
             </rect>

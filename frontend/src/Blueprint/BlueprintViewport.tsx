@@ -15,12 +15,24 @@ export function BlueprintViewport({ children }: BlueprintViewportProps) {
   const [panStart, setPanStart] = useState<{ x: number; y: number } | null>(null)
   const [dragged, setDragged] = useState(false)
 
-  const handlePointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    event.currentTarget.setPointerCapture(event.pointerId)
-    setIsPanning(true)
-    setDragged(false)
-    setPanStart({ x: event.clientX - translate.x, y: event.clientY - translate.y })
-  }, [translate.x, translate.y])
+  const handlePointerDown = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      const targetElement = event.target as HTMLElement | null
+      const interactiveTarget = targetElement?.closest('[data-blueprint-interactive="true"]')
+
+      const isPrimaryButton = event.button === 0
+      const isPanGesture = event.button === 1 || (!interactiveTarget && isPrimaryButton)
+      if (!isPanGesture) {
+        return
+      }
+
+      event.currentTarget.setPointerCapture(event.pointerId)
+      setIsPanning(true)
+      setDragged(false)
+      setPanStart({ x: event.clientX - translate.x, y: event.clientY - translate.y })
+    },
+    [translate.x, translate.y]
+  )
 
   const handlePointerMove = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     if (!isPanning || !panStart) return

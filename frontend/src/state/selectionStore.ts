@@ -7,6 +7,7 @@ import type {
   Selection,
   SelectionKind
 } from '../types'
+import { verboseLog } from '../lib/logging'
 
 type ViewLevel = 'cluster' | 'node' | 'gpu'
 
@@ -67,12 +68,29 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
   memoryInfo: undefined,
   memoryBlueprint: null,
   select: (nextSelection, options) =>
-    set((state) => ({
-      selection: nextSelection,
-      memoryInfo: options?.memoryInfo,
-      memoryBlueprint: nextSelection?.kind === 'memory' ? state.memoryBlueprint : null
-    })),
+    set((state) => {
+      if (nextSelection) {
+        verboseLog('selection updated', {
+          kind: nextSelection.kind,
+          id: nextSelection.id,
+          memoryDescriptor: options?.memoryInfo?.label
+        })
+      } else {
+        verboseLog('selection cleared')
+      }
+      return {
+        selection: nextSelection,
+        memoryInfo: options?.memoryInfo,
+        memoryBlueprint: nextSelection?.kind === 'memory' ? state.memoryBlueprint : null
+      }
+    }),
   enterNode: (node, context) => {
+    verboseLog('entering node view', {
+      nodeId: node.id,
+      hostname: node.hostname,
+      rackId: context.rackId,
+      clusterId: context.clusterId
+    })
     set({
       view: 'node',
       selection: { kind: 'node', id: node.id },
@@ -88,6 +106,12 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
     })
   },
   enterGpu: (gpu, context) => {
+    verboseLog('entering gpu view', {
+      gpuId: gpu.id,
+      nodeId: context.node.id,
+      clusterId: context.clusterId,
+      rackId: context.rackId
+    })
     set({
       view: 'gpu',
       selection: { kind: 'gpu', id: gpu.id },
@@ -104,6 +128,7 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
     })
   },
   goHome: () => {
+    verboseLog('returning to cluster view')
     set({
       view: 'cluster',
       selection: null,
@@ -119,6 +144,7 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
     const crumb = crumbs[index]
     if (!crumb) return
     if (crumb.kind === 'cluster') {
+      verboseLog('navigating via breadcrumb', { target: 'cluster', id: crumb.id })
       set({
         view: 'cluster',
         selection: { kind: 'cluster', id: crumb.id },
@@ -131,6 +157,7 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
       return
     }
     if (crumb.kind === 'rack') {
+      verboseLog('navigating via breadcrumb', { target: 'rack', id: crumb.id })
       set({
         view: 'cluster',
         selection: { kind: 'rack', id: crumb.id },
@@ -143,6 +170,7 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
       return
     }
     if (crumb.kind === 'node') {
+      verboseLog('navigating via breadcrumb', { target: 'node', id: crumb.id })
       set({
         view: 'node',
         selection: { kind: 'node', id: crumb.id },
@@ -156,6 +184,11 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
     }
     if (crumb.kind === 'gpu') {
       const priorNode = [...crumbs.slice(0, index)].reverse().find((item) => item.kind === 'node')
+      verboseLog('navigating via breadcrumb', {
+        target: 'gpu',
+        id: crumb.id,
+        nodeId: priorNode?.id
+      })
       set({
         view: 'gpu',
         selection: { kind: 'gpu', id: crumb.id },
@@ -167,6 +200,15 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
       })
     }
   },
-  openMemoryBlueprint: (blueprint) => set({ memoryBlueprint: blueprint }),
-  closeMemoryBlueprint: () => set({ memoryBlueprint: null })
+  openMemoryBlueprint: (blueprint) => {
+    verboseLog('opening memory blueprint', {
+      scope: blueprint.scope,
+      descriptor: blueprint.descriptor.label
+    })
+    set({ memoryBlueprint: blueprint })
+  },
+  closeMemoryBlueprint: () => {
+    verboseLog('closing memory blueprint')
+    set({ memoryBlueprint: null })
+  }
 }))

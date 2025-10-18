@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import type { ClusterSpec, GPUSpec, MemoryDescriptor, NodeSpec, RackSpec } from '../types'
 import { useExplorerStore } from '../state/selectionStore'
 import { useMetricsStore } from '../state/metricsStore'
+import { verboseLog } from '../lib/logging'
 
 const VIEWBOX_WIDTH = 720
 const VIEWBOX_HEIGHT = 520
@@ -104,6 +105,12 @@ export function GpuBlueprint({ gpu, node, cluster, rack }: GpuBlueprintProps) {
   )
 
   const handleMemoryClick = (descriptor: MemoryDescriptor) => {
+    verboseLog('gpu blueprint memory selected', {
+      memoryId: descriptor.id,
+      gpuId: gpu.uuid,
+      nodeId: node.id,
+      label: descriptor.label
+    })
     select({ kind: 'memory', id: descriptor.id }, { memoryInfo: descriptor })
     openMemoryBlueprint({
       scope: 'gpu',
@@ -139,6 +146,7 @@ export function GpuBlueprint({ gpu, node, cluster, rack }: GpuBlueprintProps) {
             key={descriptor.id}
             transform={`translate(${x}, ${y})`}
             className={`gpu-blueprint__hbm${isSelected ? ' is-selected' : ''}`}
+            data-blueprint-interactive="true"
           >
             <rect width={HBM_WIDTH} height={HBM_HEIGHT} rx={10} ry={10} onClick={() => handleMemoryClick(descriptor)}>
               <title>{descriptor.label} · {descriptor.capacity} · {descriptor.bandwidth}</title>
@@ -155,6 +163,7 @@ export function GpuBlueprint({ gpu, node, cluster, rack }: GpuBlueprintProps) {
           <g
             className={`gpu-blueprint__layer${selection?.kind === 'memory' && selection.id === l2Descriptor.id ? ' is-selected' : ''}`}
             transform={`translate(0, 0)`}
+            data-blueprint-interactive="true"
           >
             <rect width={DIE_WIDTH - 40} height={DIE_LAYER_HEIGHT} rx={10} ry={10} onClick={() => handleMemoryClick(l2Descriptor)}>
               <title>{l2Descriptor.label}</title>
@@ -166,6 +175,7 @@ export function GpuBlueprint({ gpu, node, cluster, rack }: GpuBlueprintProps) {
           <g
             className={`gpu-blueprint__layer${selection?.kind === 'memory' && selection.id === sharedDescriptor.id ? ' is-selected' : ''}`}
             transform={`translate(0, ${DIE_LAYER_HEIGHT + 12})`}
+            data-blueprint-interactive="true"
           >
             <rect width={DIE_WIDTH - 40} height={DIE_LAYER_HEIGHT} rx={10} ry={10} onClick={() => handleMemoryClick(sharedDescriptor)}>
               <title>{sharedDescriptor.label}</title>
@@ -177,6 +187,7 @@ export function GpuBlueprint({ gpu, node, cluster, rack }: GpuBlueprintProps) {
           <g
             className={`gpu-blueprint__layer${selection?.kind === 'memory' && selection.id === registersDescriptor.id ? ' is-selected' : ''}`}
             transform={`translate(0, ${(DIE_LAYER_HEIGHT + 12) * 2})`}
+            data-blueprint-interactive="true"
           >
             <rect width={DIE_WIDTH - 40} height={DIE_LAYER_HEIGHT} rx={10} ry={10} onClick={() => handleMemoryClick(registersDescriptor)}>
               <title>{registersDescriptor.label}</title>
@@ -188,6 +199,7 @@ export function GpuBlueprint({ gpu, node, cluster, rack }: GpuBlueprintProps) {
           <g
             className={`gpu-blueprint__layer${selection?.kind === 'memory' && selection.id === tmaDescriptor.id ? ' is-selected' : ''}`}
             transform={`translate(0, ${(DIE_LAYER_HEIGHT + 12) * 3})`}
+            data-blueprint-interactive="true"
           >
             <rect width={DIE_WIDTH - 40} height={DIE_LAYER_HEIGHT} rx={10} ry={10} onClick={() => handleMemoryClick(tmaDescriptor)}>
               <title>{tmaDescriptor.label}</title>

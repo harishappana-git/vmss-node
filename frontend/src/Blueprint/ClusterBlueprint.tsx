@@ -3,6 +3,7 @@ import type { KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent
 import type { ClusterSpec, NodeSpec, RackSpec, Topology } from '../types'
 import { useExplorerStore } from '../state/selectionStore'
 import { useMetricsStore } from '../state/metricsStore'
+import { verboseLog } from '../lib/logging'
 
 const NODE_WIDTH = 150
 const NODE_HEIGHT = 90
@@ -27,6 +28,12 @@ export function ClusterBlueprint({ topology }: { topology: Topology }) {
       }
       event.preventDefault()
     }
+    verboseLog('cluster blueprint node activated', {
+      nodeId: node.id,
+      rackId: rack.id,
+      clusterId: cluster.id,
+      via: 'key' in event ? 'keyboard' : 'pointer'
+    })
     enterNode(node, {
       clusterId: cluster.id,
       clusterLabel: cluster.name,
@@ -108,6 +115,7 @@ export function ClusterBlueprint({ topology }: { topology: Topology }) {
                       role="button"
                       tabIndex={0}
                       aria-label={`${node.hostname} node in rack ${rack.name}`}
+                      data-blueprint-interactive="true"
                       onClick={(event) => activateNode(node, rack, cluster, event)}
                       onKeyDown={(event) => activateNode(node, rack, cluster, event)}
                     >
