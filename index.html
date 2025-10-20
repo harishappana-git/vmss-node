@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LLM Training Platform Architecture Explorer</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+    <script type="module" src="src/app.js" defer></script>
+  </head>
+  <body>
+    <header class="app-header">
+      <h1>Large-Scale LLM Training Platform Architecture</h1>
+      <p>
+        Explore the interconnected layers that power a 10,000+ GPU distributed
+        training platform. Double-click any component to zoom and reveal its
+        detailed responsibilities, advances, and ongoing challenges.
+      </p>
+    </header>
+    <main class="app">
+      <section class="visualization">
+        <svg id="architecture-svg" role="img" aria-label="Interactive layered diagram"></svg>
+        <div class="legend">
+          <h2>How to explore</h2>
+          <ul>
+            <li>Hover to preview a layer&rsquo;s focus within the stack.</li>
+            <li>Double-click a component to zoom in and lock its details.</li>
+            <li>Double-click the background to reset the view.</li>
+            <li>
+              Use your mouse wheel or pinch gestures to zoom and pan around the
+              canvas.
+            </li>
+          </ul>
+        </div>
+      </section>
+      <aside class="details" aria-live="polite">
+        <h2 id="details-title">Layer overview</h2>
+        <p id="details-description">
+          Select a layer to examine its role in orchestrating large-scale model
+          training.
+        </p>
+        <div class="details-narrative" id="details-narrative"></div>
+        <div class="details-section" id="details-advances"></div>
+        <div class="details-section" id="details-challenges"></div>
+      </aside>
+    </main>
+    <footer class="app-footer">
+      <p>
+        Built with <strong>D3.js</strong> to visualize the depth and complexity of
+        hyperscale LLM infrastructure.
+      </p>
+    </footer>
+  </body>
+</html>
