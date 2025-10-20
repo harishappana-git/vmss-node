@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>LLM Training Platform Architecture Explorer</title>
+    <title>Isometric LLM Platform Illustration</title>
     <link rel="stylesheet" href="styles.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -11,50 +11,92 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
     <script type="module" src="src/app.js" defer></script>
   </head>
   <body>
-    <header class="app-header">
-      <h1>Large-Scale LLM Training Platform Architecture</h1>
+    <header class="page-header">
+      <h1>Architecture of a Large-Scale LLM Training Platform</h1>
       <p>
-        Explore the interconnected layers that power a 10,000+ GPU distributed
-        training platform. Double-click any component to zoom and reveal its
-        detailed responsibilities, advances, and ongoing challenges.
+        A clean, isometric overview of the integrated training and serving stack
+        powering hyperscale language model workloads.
       </p>
     </header>
-    <main class="app">
-      <section class="visualization">
-        <svg id="architecture-svg" role="img" aria-label="Interactive layered diagram"></svg>
-        <div class="legend">
-          <h2>How to explore</h2>
-          <ul>
-            <li>Hover to preview a layer&rsquo;s focus within the stack.</li>
-            <li>Double-click a component to zoom in and lock its details.</li>
-            <li>Double-click the background to reset the view.</li>
-            <li>
-              Use your mouse wheel or pinch gestures to zoom and pan around the
-              canvas.
-            </li>
-          </ul>
+    <main class="diagram-stage" aria-labelledby="diagram-title">
+      <div class="background-grid" aria-hidden="true"></div>
+      <svg class="connector-layer" aria-hidden="true"></svg>
+      <section class="diagram" id="diagram" role="presentation">
+        <div class="left-pane" data-node="dataPane">
+          <h2>Your Data</h2>
+          <div class="data-icons" aria-hidden="true"></div>
+          <div class="data-card">
+            <h3>Data Ingestion &amp; Storage</h3>
+            <ul>
+              <li>S3 / Lustre / Ceph</li>
+              <li>Local NVMe cache</li>
+              <li>GPUDirect Storage</li>
+            </ul>
+          </div>
+          <div class="data-card">
+            <h3>Data Preprocessing &amp; Tokenization</h3>
+            <ul>
+              <li>Clean &amp; deduplicate</li>
+              <li>Shuffle at scale</li>
+              <li>SentencePiece / BPE</li>
+            </ul>
+          </div>
+        </div>
+        <div class="platform-region">
+          <article class="ai-objectives" data-node="aiObjectives">
+            <h2>AI Use Cases &amp; Objectives</h2>
+            <p>Chatbots · Code · Multimodal · RLHF-aligned flexibility</p>
+          </article>
+          <div class="platform" data-node="platform">
+            <div class="platform-iso" aria-hidden="true"></div>
+            <div class="platform-content">
+              <header class="platform-header">
+                <h2 id="diagram-title">Inference Engine</h2>
+              </header>
+              <div class="module-grid" id="module-grid" aria-live="polite"></div>
+            </div>
+          </div>
+          <article class="customization-card" data-node="customization">
+            <h3>Model Customization</h3>
+            <p>Adapters · LoRA · Task fine-tuning</p>
+          </article>
+        </div>
+        <div class="cloud-region">
+          <article class="cloud-card" data-node="privateCloud">
+            <h2>Private Cloud</h2>
+            <div class="cloud-icons" aria-hidden="true">
+              <span class="logo aws" aria-label="AWS"></span>
+              <span class="logo azure" aria-label="Azure"></span>
+              <span class="logo gcp" aria-label="GCP"></span>
+            </div>
+            <p>AWS · Azure · GCP</p>
+          </article>
+          <article class="cloud-card alt" data-node="managedCloud">
+            <h2>Managed Cloud</h2>
+            <p>Your Vendor Platform</p>
+          </article>
         </div>
       </section>
-      <aside class="details" aria-live="polite">
-        <h2 id="details-title">Layer overview</h2>
-        <p id="details-description">
-          Select a layer to examine its role in orchestrating large-scale model
-          training.
-        </p>
-        <div class="details-narrative" id="details-narrative"></div>
-        <div class="details-section" id="details-advances"></div>
-        <div class="details-section" id="details-challenges"></div>
-      </aside>
+      <section class="runtime-strip" aria-label="Runtime foundation">
+        <div class="runtime-card" data-node="communication">
+          <h3>Communication &amp; Networking</h3>
+          <p>NCCL collectives · NVLink / NVSwitch · InfiniBand Clos</p>
+        </div>
+        <div class="runtime-card" data-node="storage">
+          <h3>Storage (Checkpoints)</h3>
+          <p>Parallel FS · Fast multi-TB checkpoints</p>
+        </div>
+        <div class="runtime-card" data-node="monitoring">
+          <h3>Monitoring &amp; Fault Tolerance</h3>
+          <p>Prometheus / Grafana · DCGM · Tracing · Auto-evict &amp; resume</p>
+        </div>
+      </section>
     </main>
-    <footer class="app-footer">
-      <p>
-        Built with <strong>D3.js</strong> to visualize the depth and complexity of
-        hyperscale LLM infrastructure.
-      </p>
+    <footer class="page-footer">
+      <p>Integrated Training and Serving Infra</p>
     </footer>
   </body>
 </html>

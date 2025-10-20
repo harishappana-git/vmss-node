@@ -1,11 +1,11 @@
-# LLM Training Platform Explorer
+# LLM Training Platform Illustration
 
-This project renders a 2D, zoomable visualization that describes the layered architecture of a large-scale LLM distributed training platform. It is a static web experience built with plain HTML, CSS, and JavaScript (D3.js).
+This project renders a single-page, isometric technical illustration that captures the layered architecture of a large-scale LLM distributed training platform. The experience is a static web page built with HTML, CSS, and vanilla JavaScript and does not require any build tooling.
 
 ## Prerequisites
 
 - A modern web browser (Chrome, Edge, Firefox, or Safari) with JavaScript enabled.
-- A simple HTTP server for local development. No additional build tools or package managers are required.
+- A simple HTTP server for local development. No additional package manager is required.
 
 ## Getting Started
 
@@ -15,30 +15,30 @@ This project renders a 2D, zoomable visualization that describes the layered arc
    cd vmss-node
    ```
 
-2. **Start a local static server.** Any basic server works. For example, using Python 3:
+2. **Start a local static server.** Any lightweight server works. For example, using Python 3:
    ```bash
    python3 -m http.server 8000
    ```
    This command serves the project files at `http://localhost:8000/`.
 
-   > **Tip:** If you prefer Node.js tooling, you can use `npx serve` or any equivalent static server.
+   > **Tip:** If you prefer Node.js tooling, you can use `npx serve` or any similar static server.
 
-3. **Open the app in your browser:**
-   Navigate to `http://localhost:8000/index.html` and interact with the visualization. Hover, zoom, and double-click the different layers to explore their detailed narratives, advances, and challenges.
+3. **Open the illustration in your browser:**
+   Navigate to `http://localhost:8000/index.html` to view the isometric diagram that summarizes each layer of the training stack.
 
 ## Project Structure
 
 ```
-├── index.html      # Application shell and layout
-├── styles.css      # Global styles and theming
+├── index.html      # Application shell and semantic layout
+├── styles.css      # Global design tokens and isometric styling
 └── src
-    ├── app.js      # D3-based visualization logic and interactions
-    └── data.js     # Layer definitions, narratives, advances, and challenges
+    ├── app.js      # DOM assembly, icon rendering, connector layout
+    └── data.js     # Configuration for modules and connector routing
 ```
 
 ## Troubleshooting
 
-- **White screen or missing data:** Ensure you are loading the site via `http://` or `https://`. Opening the `index.html` file directly from disk (`file://`) may block module loading in some browsers.
+- **Blank page or missing connectors:** Ensure you are loading the page via `http://` or `https://`. Browsers may block ES module loading for files opened directly via `file://`.
 - **Port already in use:** If port 8000 is busy, choose another available port (e.g., `python3 -m http.server 3000`).
 
 ## License

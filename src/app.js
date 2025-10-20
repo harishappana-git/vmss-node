@@ -1,237 +1,168 @@
-import { layers } from './data.js';
+import { illustrationConfig } from './data.js';
 
-const svg = d3.select('#architecture-svg');
-const bounds = svg.node().getBoundingClientRect();
-const width = bounds.width || 960;
-const height = bounds.height || 1200;
+const moduleGrid = document.getElementById('module-grid');
+const dataIconContainer = document.querySelector('.data-icons');
+const connectorLayer = document.querySelector('.connector-layer');
+const diagramStage = document.querySelector('.diagram-stage');
 
-svg.attr('viewBox', `0 0 ${width} ${height}`).attr('preserveAspectRatio', 'xMidYMid meet');
+const iconTemplates = {
+  image: `<svg viewBox="0 0 36 36" aria-hidden="true" focusable="false"><rect x="4" y="6" width="28" height="24" rx="6" ry="6" fill="none" stroke="currentColor" stroke-width="2" /><path d="M10 22l6-6 5 5 5-4 4 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /><circle cx="14" cy="14" r="2.8" fill="currentColor" /></svg>`,
+  doc: `<svg viewBox="0 0 36 36" aria-hidden="true" focusable="false"><path d="M9 4h12l6 6v20a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" /><path d="M21 4v8h8" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" /><path d="M12 18h12M12 24h12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg>`,
+  audio: `<svg viewBox="0 0 36 36" aria-hidden="true" focusable="false"><path d="M12 12l10-6v24l-10-6H8a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" /><path d="M26 14a6 6 0 0 1 0 8m-4-10a9 9 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg>`,
+};
 
-const margins = { top: 40, right: 60, bottom: 60, left: 60 };
-const layerWidth = Math.min(720, width - margins.left - margins.right);
-const layerHeight = 80;
-const layerSpacing = 60;
+const colorTokens = {
+  accent: 'var(--accent)',
+  ink: 'var(--ink)',
+  'ink-muted': 'var(--ink-muted)',
+};
 
-const zoomLayer = svg.append('g').attr('class', 'zoom-layer');
+const dashStyles = {
+  dashed: '10 8',
+  'dashed-arrow': '10 8',
+};
 
-const zoomBehavior = d3
-  .zoom()
-  .scaleExtent([0.7, 5])
-  .on('zoom', (event) => {
-    zoomLayer.attr('transform', event.transform);
+const createModuleChip = (module) => {
+  const article = document.createElement('article');
+  article.className = `module-chip${module.priority === 'high' ? ' module-chip--highlight' : ''}`;
+  article.innerHTML = `
+    <h3>${module.name}</h3>
+    <ul>
+      ${module.bullets.map((item) => `<li>${item}</li>`).join('')}
+    </ul>
+  `;
+  return article;
+};
+
+const populateModules = () => {
+  const fragment = document.createDocumentFragment();
+  illustrationConfig.platform.modules.forEach((module) => {
+    fragment.appendChild(createModuleChip(module));
   });
+  moduleGrid.appendChild(fragment);
+};
 
-svg.call(zoomBehavior);
-svg.on('dblclick.zoom', null); // disable built-in double click zoom to customize
+const populateDataIcons = () => {
+  const fragment = document.createDocumentFragment();
+  illustrationConfig.leftPane.icons.forEach((key) => {
+    const span = document.createElement('span');
+    span.className = `data-icon data-icon--${key}`;
+    span.innerHTML = iconTemplates[key];
+    fragment.appendChild(span);
+  });
+  dataIconContainer.appendChild(fragment);
+};
 
-const tooltip = d3
-  .select('.visualization')
-  .append('div')
-  .attr('class', 'tooltip');
+const anchorVectors = {
+  right: { x: 1, y: 0 },
+  left: { x: -1, y: 0 },
+  top: { x: 0, y: -1 },
+  bottom: { x: 0, y: 1 },
+};
 
-const computePositions = () => {
-  const startY = margins.top;
-  return layers.map((layer, index) => {
-    const x = width / 2;
-    const y = startY + index * (layerHeight + layerSpacing) + layerHeight / 2;
-    return { ...layer, x, y };
+const getAnchorPoint = (rect, anchor, stageRect) => {
+  switch (anchor) {
+    case 'right':
+      return { x: rect.right - stageRect.left, y: rect.top + rect.height / 2 - stageRect.top };
+    case 'left':
+      return { x: rect.left - stageRect.left, y: rect.top + rect.height / 2 - stageRect.top };
+    case 'top':
+      return { x: rect.left + rect.width / 2 - stageRect.left, y: rect.top - stageRect.top };
+    case 'bottom':
+      return { x: rect.left + rect.width / 2 - stageRect.left, y: rect.bottom - stageRect.top };
+    default:
+      return { x: rect.left + rect.width / 2 - stageRect.left, y: rect.top + rect.height / 2 - stageRect.top };
+  }
+};
+
+const ensureDefs = () => {
+  let defs = connectorLayer.querySelector('defs');
+  if (!defs) {
+    defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+    connectorLayer.appendChild(defs);
+  }
+  let arrowMarker = connectorLayer.querySelector('#arrow-accent');
+  if (!arrowMarker) {
+    arrowMarker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+    arrowMarker.setAttribute('id', 'arrow-accent');
+    arrowMarker.setAttribute('markerWidth', '12');
+    arrowMarker.setAttribute('markerHeight', '12');
+    arrowMarker.setAttribute('refX', '6');
+    arrowMarker.setAttribute('refY', '6');
+    arrowMarker.setAttribute('orient', 'auto');
+    arrowMarker.setAttribute('markerUnits', 'strokeWidth');
+
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', 'M2 1l8 5-8 5z');
+    path.setAttribute('fill', 'var(--accent)');
+    arrowMarker.appendChild(path);
+    defs.appendChild(arrowMarker);
+  }
+};
+
+const drawConnectors = () => {
+  ensureDefs();
+  const stageRect = diagramStage.getBoundingClientRect();
+  connectorLayer.setAttribute('width', stageRect.width);
+  connectorLayer.setAttribute('height', stageRect.height);
+  connectorLayer.setAttribute('viewBox', `0 0 ${stageRect.width} ${stageRect.height}`);
+
+  while (connectorLayer.lastChild && connectorLayer.lastChild.tagName !== 'defs') {
+    connectorLayer.removeChild(connectorLayer.lastChild);
+  }
+
+  illustrationConfig.connectors.forEach((connector) => {
+    const fromEl = document.querySelector(`[data-node="${connector.from}"]`);
+    const toEl = document.querySelector(`[data-node="${connector.to}"]`);
+    if (!fromEl || !toEl) return;
+
+    const fromRect = fromEl.getBoundingClientRect();
+    const toRect = toEl.getBoundingClientRect();
+
+    const start = getAnchorPoint(fromRect, connector.startAnchor, stageRect);
+    const end = getAnchorPoint(toRect, connector.endAnchor, stageRect);
+
+    const vectorStart = anchorVectors[connector.startAnchor] || { x: 0, y: 0 };
+    const vectorEnd = anchorVectors[connector.endAnchor] || { x: 0, y: 0 };
+    const offset = connector.curvature ?? 80;
+
+    const c1 = {
+      x: start.x + vectorStart.x * offset,
+      y: start.y + vectorStart.y * offset,
+    };
+    const c2 = {
+      x: end.x - vectorEnd.x * offset,
+      y: end.y - vectorEnd.y * offset,
+    };
+
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', `M${start.x} ${start.y} C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${end.x} ${end.y}`);
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke', colorTokens[connector.color] || colorTokens.ink);
+    path.setAttribute('stroke-width', connector.width || 2);
+    path.setAttribute('stroke-linecap', 'round');
+    path.classList.add('connector-path');
+
+    if (connector.style && dashStyles[connector.style]) {
+      path.setAttribute('stroke-dasharray', dashStyles[connector.style]);
+      path.classList.add('connector-path--dashed');
+    }
+
+    if (connector.style === 'dashed-arrow') {
+      path.setAttribute('marker-end', 'url(#arrow-accent)');
+    }
+
+    connectorLayer.appendChild(path);
   });
 };
 
-const positionedLayers = computePositions();
+populateModules();
+populateDataIcons();
+drawConnectors();
 
-// Draw connectors between layers
-zoomLayer
-  .selectAll('path.connector')
-  .data(d3.pairs(positionedLayers))
-  .enter()
-  .append('path')
-  .attr('class', 'connector')
-  .attr('d', ([from, to]) => {
-    const controlOffset = 40;
-    return `M${from.x} ${from.y + layerHeight / 2}
-            C ${from.x} ${from.y + layerHeight / 2 + controlOffset},
-              ${to.x} ${to.y - layerHeight / 2 - controlOffset},
-              ${to.x} ${to.y - layerHeight / 2}`;
-  });
-
-const layerGroups = zoomLayer
-  .selectAll('g.layer')
-  .data(positionedLayers)
-  .enter()
-  .append('g')
-  .attr('class', 'layer')
-  .attr('transform', (d) => `translate(${d.x - layerWidth / 2}, ${d.y - layerHeight / 2})`)
-  .on('mouseenter', function (event, layer) {
-    d3.select(this).select('.layer-card').classed('hovered', true);
-    tooltip
-      .classed('visible', true)
-      .text(layer.summary)
-      .style('left', `${event.offsetX}px`)
-      .style('top', `${event.offsetY}px`);
-  })
-  .on('mousemove', (event) => {
-    tooltip.style('left', `${event.offsetX}px`).style('top', `${event.offsetY}px`);
-  })
-  .on('mouseleave', function () {
-    d3.select(this).select('.layer-card').classed('hovered', false);
-    tooltip.classed('visible', false);
-  })
-  .on('click', (event) => {
-    event.stopPropagation();
-  })
-  .on('dblclick', (event, layer) => {
-    event.stopPropagation();
-    focusLayer(layer);
-  });
-
-layerGroups
-  .append('rect')
-  .attr('class', 'layer-card')
-  .attr('width', layerWidth)
-  .attr('height', layerHeight);
-
-layerGroups
-  .append('text')
-  .attr('class', 'layer-label')
-  .attr('x', layerWidth / 2)
-  .attr('y', 26)
-  .attr('text-anchor', 'middle')
-  .text((d) => d.name);
-
-// Add mini components inside each layer for extra fidelity
-const subComponentHeight = 22;
-const subComponentPadding = 16;
-
-layerGroups.each(function (layer) {
-  const group = d3.select(this);
-  const items = layer.advances.slice(0, 2); // show highlights inside card
-  const cardWidth = layerWidth - subComponentPadding * 2;
-
-  items.forEach((text, index) => {
-    const subY = 38 + index * (subComponentHeight + 8);
-    const subGroup = group
-      .append('g')
-      .attr('class', 'sub-component')
-      .attr('transform', `translate(${subComponentPadding}, ${subY})`);
-
-    subGroup
-      .append('rect')
-      .attr('width', cardWidth)
-      .attr('height', subComponentHeight)
-      .attr('rx', 8)
-      .attr('ry', 8);
-
-    subGroup
-      .append('text')
-      .attr('x', 10)
-      .attr('y', subComponentHeight / 2 + 1)
-      .attr('dominant-baseline', 'middle')
-      .text(text);
-  });
+const resizeObserver = new ResizeObserver(() => {
+  window.requestAnimationFrame(drawConnectors);
 });
 
-// Panel references
-const detailsTitle = document.getElementById('details-title');
-const detailsDescription = document.getElementById('details-description');
-const detailsAdvances = document.getElementById('details-advances');
-const detailsChallenges = document.getElementById('details-challenges');
-const detailsNarrative = document.getElementById('details-narrative');
-
-function populateDetails(layer) {
-  detailsTitle.textContent = layer.name;
-  detailsDescription.textContent = layer.summary;
-
-  renderList(detailsAdvances, 'Key Advances & Timeline', layer.advances);
-  renderList(detailsChallenges, 'Open Challenges at Hyperscale', layer.challenges);
-  renderNarrative(detailsNarrative, layer.deepDive);
-}
-
-let activeLayerId = null;
-
-function renderList(container, title, items = []) {
-  container.replaceChildren();
-  if (!items.length) {
-    return;
-  }
-
-  const heading = document.createElement('h3');
-  heading.textContent = title;
-  const list = document.createElement('ul');
-  items.forEach((item) => {
-    const li = document.createElement('li');
-    li.textContent = item;
-    list.appendChild(li);
-  });
-
-  container.appendChild(heading);
-  container.appendChild(list);
-}
-
-function renderNarrative(container, sections = []) {
-  container.replaceChildren();
-  if (!sections.length) {
-    return;
-  }
-
-  const fragment = document.createDocumentFragment();
-
-  sections.forEach((section) => {
-    const block = document.createElement('div');
-    block.className = 'narrative-section';
-
-    if (section.heading) {
-      const heading = document.createElement('h3');
-      heading.textContent = section.heading;
-      block.appendChild(heading);
-    }
-
-    (section.paragraphs || []).forEach((paragraph) => {
-      const p = document.createElement('p');
-      p.textContent = paragraph;
-      block.appendChild(p);
-    });
-
-    fragment.appendChild(block);
-  });
-
-  container.appendChild(fragment);
-}
-
-function focusLayer(layer) {
-  const scale = 2.2;
-  const centerX = width / 2;
-  const centerY = height / 2;
-  const translateX = centerX - layer.x * scale;
-  const translateY = centerY - layer.y * scale;
-
-  svg
-    .transition()
-    .duration(750)
-    .call(zoomBehavior.transform, d3.zoomIdentity.translate(translateX, translateY).scale(scale));
-
-  layerGroups.selectAll('.layer-card').classed('active', (d) => d.id === layer.id);
-  populateDetails(layer);
-  activeLayerId = layer.id;
-}
-
-function resetFocus() {
-  svg.transition().duration(600).call(zoomBehavior.transform, d3.zoomIdentity);
-  layerGroups.selectAll('.layer-card').classed('active', false);
-  activeLayerId = null;
-  detailsTitle.textContent = 'Layer overview';
-  detailsDescription.textContent =
-    'Select a layer to examine its role in orchestrating large-scale model training.';
-  detailsAdvances.replaceChildren();
-  detailsChallenges.replaceChildren();
-  detailsNarrative.replaceChildren();
-}
-
-svg.on('dblclick', () => {
-  if (activeLayerId !== null) {
-    resetFocus();
-  }
-});
-
-// Initialize with top layer for context
-focusLayer(positionedLayers[0]);
+resizeObserver.observe(diagramStage);
+window.addEventListener('resize', () => window.requestAnimationFrame(drawConnectors));
