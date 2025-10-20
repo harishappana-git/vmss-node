@@ -1,0 +1,443 @@
+:root {
+  --bg: #ffffff;
+  --grid: #eceff3;
+  --ink: #111827;
+  --ink-muted: #6b7280;
+  --accent: #ff5a3e;
+  --edge: #c9ced6;
+  --side: #f3f5f8;
+  --radius-tile: 14px;
+  --radius-card: 22px;
+  --radius-cloud: 28px;
+  --elev-1: 0 6px 18px rgba(17, 24, 39, 0.08);
+  --elev-2: 0 18px 48px rgba(17, 24, 39, 0.12);
+  --chip-width: min(220px, 26vw);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.page-header,
+.page-footer {
+  text-align: center;
+  padding: 32px 24px 0;
+}
+
+.page-header h1 {
+  font-size: clamp(1.75rem, 2.4vw, 2.4rem);
+  margin-bottom: 12px;
+}
+
+.page-header p {
+  color: var(--ink-muted);
+  margin: 0 auto;
+  max-width: 760px;
+}
+
+.page-footer {
+  font-weight: 600;
+  padding-bottom: 32px;
+  color: var(--accent);
+}
+
+.diagram-stage {
+  position: relative;
+  width: min(1260px, 92vw);
+  margin: 0 auto;
+  padding: 32px 24px 72px;
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+}
+
+.background-grid {
+  position: absolute;
+  inset: -160px;
+  background-image: linear-gradient(
+      90deg,
+      rgba(236, 239, 243, 0.7) 1px,
+      transparent 1px
+    ),
+    linear-gradient(0deg, rgba(236, 239, 243, 0.7) 1px, transparent 1px);
+  background-size: 140px 140px;
+  transform: rotate(-22deg) scale(1.4);
+  transform-origin: center;
+  opacity: 0.55;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.background-grid::after,
+.background-grid::before {
+  content: '';
+  position: absolute;
+  width: 120px;
+  height: 120px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: var(--elev-1);
+}
+
+.background-grid::after {
+  top: 18%;
+  left: 12%;
+}
+
+.background-grid::before {
+  bottom: 16%;
+  right: 18%;
+}
+
+.diagram {
+  position: relative;
+  display: grid;
+  grid-template-columns: 260px 1fr 240px;
+  gap: 48px;
+  align-items: start;
+  z-index: 1;
+}
+
+.left-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  position: relative;
+}
+
+.left-pane h2 {
+  font-size: 1.2rem;
+  margin: 0;
+}
+
+.data-icons {
+  display: flex;
+  gap: 14px;
+  padding: 18px;
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: var(--radius-card);
+  border: 1px solid var(--edge);
+  box-shadow: var(--elev-1);
+}
+
+.data-icon {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-tile);
+  background: var(--side);
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--edge);
+}
+
+.data-icon svg {
+  width: 32px;
+  height: 32px;
+}
+
+.data-card {
+  background: rgba(255, 255, 255, 0.96);
+  border-radius: var(--radius-card);
+  border: 1px solid var(--edge);
+  padding: 20px 22px;
+  box-shadow: var(--elev-1);
+}
+
+.data-card h3 {
+  margin: 0 0 10px;
+  font-size: 1rem;
+}
+
+.data-card ul {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--ink-muted);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.platform-region {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.ai-objectives {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-card);
+  padding: 18px 28px;
+  box-shadow: var(--elev-1);
+  text-align: center;
+  width: clamp(260px, 32vw, 360px);
+}
+
+.ai-objectives h2 {
+  margin: 0 0 8px;
+  font-size: 1.1rem;
+}
+
+.ai-objectives p {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: 0.95rem;
+}
+
+.platform {
+  position: relative;
+  width: clamp(420px, 45vw, 560px);
+  height: clamp(280px, 30vw, 360px);
+}
+
+.platform-iso {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-card);
+  background: linear-gradient(165deg, #ffffff 0%, #f7f9fc 45%, #eef2f6 100%);
+  border: 1.5px solid var(--edge);
+  box-shadow: var(--elev-2);
+  transform: perspective(1000px) rotateX(52deg) rotateZ(-20deg);
+  transform-origin: center;
+}
+
+.platform-iso::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-card);
+  background: linear-gradient(180deg, rgba(240, 243, 248, 0.8), rgba(220, 225, 232, 0.95));
+  transform: translate3d(12px, 26px, 0);
+  z-index: -1;
+  border: 1.5px solid rgba(201, 206, 214, 0.6);
+}
+
+.platform-content {
+  position: absolute;
+  inset: 0;
+  padding: clamp(28px, 3vw, 40px) clamp(32px, 3.4vw, 48px);
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.platform-header h2 {
+  margin: 0;
+  font-size: clamp(1.25rem, 2.2vw, 1.8rem);
+}
+
+.module-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: center;
+}
+
+.module-chip {
+  width: var(--chip-width);
+  min-width: 180px;
+  background: rgba(255, 255, 255, 0.94);
+  border-radius: var(--radius-card);
+  border: 1px solid var(--edge);
+  padding: 16px 18px;
+  box-shadow: var(--elev-1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.module-chip:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(17, 24, 39, 0.14);
+}
+
+.module-chip--highlight {
+  border: 1.5px solid rgba(255, 90, 62, 0.7);
+}
+
+.module-chip h3 {
+  margin: 0 0 6px;
+  font-size: 0.95rem;
+}
+
+.module-chip ul {
+  margin: 0;
+  padding-left: 16px;
+  color: var(--ink-muted);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.customization-card {
+  align-self: flex-start;
+  background: rgba(255, 255, 255, 0.96);
+  border-radius: var(--radius-card);
+  border: 1.5px solid var(--accent);
+  padding: 18px 24px;
+  box-shadow: var(--elev-1);
+  max-width: 260px;
+  transform: translate(-18%, -10%);
+}
+
+.customization-card h3 {
+  margin: 0 0 6px;
+  font-size: 1rem;
+}
+
+.customization-card p {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: 0.92rem;
+}
+
+.cloud-region {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.cloud-card {
+  background: rgba(255, 255, 255, 0.94);
+  border-radius: var(--radius-cloud);
+  border: 1px solid var(--edge);
+  padding: 24px 26px;
+  box-shadow: var(--elev-1);
+  text-align: center;
+}
+
+.cloud-card h2 {
+  margin: 0 0 12px;
+  font-size: 1.1rem;
+}
+
+.cloud-card p {
+  margin: 6px 0 0;
+  color: var(--ink-muted);
+  font-size: 0.94rem;
+}
+
+.cloud-card.alt {
+  border-style: dashed;
+}
+
+.cloud-icons {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--edge);
+}
+
+.logo.aws {
+  background: linear-gradient(135deg, #ff9900, #ff5a3e);
+}
+
+.logo.azure {
+  background: linear-gradient(135deg, #0078d4, #60a5fa);
+}
+
+.logo.gcp {
+  background: linear-gradient(135deg, #4285f4, #34a853);
+}
+
+.connector-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.connector-path {
+  filter: drop-shadow(0 6px 16px rgba(17, 24, 39, 0.08));
+}
+
+.connector-path--dashed {
+  animation: dashFlow 10s linear infinite;
+}
+
+@keyframes dashFlow {
+  to {
+    stroke-dashoffset: -180;
+  }
+}
+
+.runtime-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+  z-index: 1;
+}
+
+.runtime-card {
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: var(--radius-card);
+  border: 1px solid var(--edge);
+  padding: 18px 22px;
+  box-shadow: var(--elev-1);
+  font-size: 0.95rem;
+}
+
+.runtime-card h3 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
+
+.runtime-card p {
+  margin: 0;
+  color: var(--ink-muted);
+  line-height: 1.5;
+}
+
+@media (max-width: 1080px) {
+  .diagram {
+    grid-template-columns: 1fr;
+    gap: 36px;
+  }
+
+  .left-pane,
+  .cloud-region {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .customization-card {
+    transform: none;
+  }
+
+  .platform-region {
+    order: -1;
+  }
+}
+
+@media (max-width: 760px) {
+  .module-grid {
+    justify-content: flex-start;
+  }
+
+  .data-icons {
+    flex-wrap: wrap;
+  }
+
+  .cloud-region {
+    flex-direction: column;
+  }
+}
