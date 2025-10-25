@@ -66,7 +66,13 @@ Install the CUDA toolkit using the RPM packages from NVIDIA.
 - Configure CMake with `-DCMAKE_TOOLCHAIN_FILE="<path-to-vcpkg>\scripts\buildsystems\vcpkg.cmake"`.
 
 #### macOS
-CUDA does not support current macOS releases. You can still study the host-side OpenGL scaffolding, but the CUDA kernels cannot be built or executed on macOS.
+CUDA does not support current macOS releases. You can still study the host-side OpenGL scaffolding locally, but to execute the CUDA kernels you need access to an NVIDIA GPU running Linux or Windows. Consider one of the following approaches:
+
+- **Remote Linux workstation** – provision (or borrow) a Linux machine with an NVIDIA GPU, install the dependencies as described above, and develop via SSH/VS Code Remote. This is the most seamless solution when you already have access to supported hardware.
+- **Virtual machine on macOS** – create a Linux VM using Parallels Desktop, VMware Fusion, or UTM and attach an external NVIDIA eGPU enclosure that supports PCIe passthrough. Install the CUDA toolkit and follow the Linux setup instructions inside the VM. (macOS cannot pass through the built-in Apple/AMD GPUs to guests.)
+- **Docker with remote GPU** – run `docker` locally and connect to a remote NVIDIA GPU exposed over the network via [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html). Build the project inside the container while forwarding X11/Wayland output to your Mac, or stream the rendered window via VNC.
+
+If none of these options are available, you can still use the repository as a reference for structuring CUDA/OpenGL interoperability while prototyping your visualisation logic on macOS using CPU-based fallbacks.
 
 ## Building
 
