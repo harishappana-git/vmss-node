@@ -17,6 +17,10 @@ export interface SimInput {
   hbmGBps: number; // e.g., 900 for A100
   pcieGBps: number; // e.g., 32 for PCIe Gen4
   transposeMode?: TransposeMode;
+  maxThreadsPerSM?: number;
+  maxBlocksPerSM?: number;
+  warpSize?: number;
+  smCount?: number;
 }
 
 export interface SimEvent {
@@ -38,6 +42,12 @@ export interface SimResult {
   blockDimX: number;
   occupancy: number;
   notes: string[];
+  warpSize: number;
+  smCount: number;
+  maxThreadsPerSM: number;
+  totalThreads: number;
+  totalBlocks: number;
+  totalDurationMs: number;
 }
 
 const DEFAULTS = {
@@ -45,6 +55,10 @@ const DEFAULTS = {
   hbmGBps: 900,
   pcieGBps: 32,
   tile: 16,
+  warpSize: 32,
+  maxThreadsPerSM: 2048,
+  maxBlocksPerSM: 32,
+  smCount: 108,
 };
 
 function clampNumber(value: number, min: number, max: number) {
@@ -58,10 +72,18 @@ function msFor(bytes: number, GBps: number) {
   return ((bytes / 1e9) / Math.max(GBps, 1e-6)) * 1000;
 }
 
-function estimateOccupancy(blockDim: number) {
-  const maxThreadsPerSM = 2048;
-  const maxBlocksPerSM = 32;
-  const warpSize = 32;
+function estimateOccupancy(
+  blockDim: number,
+  {
+    warpSize,
+    maxThreadsPerSM,
+    maxBlocksPerSM,
+  }: {
+    warpSize: number;
+    maxThreadsPerSM: number;
+    maxBlocksPerSM: number;
+  }
+) {
   const warpsPerBlock = Math.ceil(blockDim / warpSize);
   const maxWarpsPerSM = maxThreadsPerSM / warpSize;
   const blocksPerSM = Math.min(Math.floor(maxThreadsPerSM / blockDim), maxBlocksPerSM);
@@ -79,7 +101,23 @@ export function simulate(input: SimInput): SimResult {
   const gridX = Math.ceil(N / blockDimX);
   const hbm = clampNumber(input.hbmGBps || DEFAULTS.hbmGBps, 1, 1_000);
   const pcie = clampNumber(input.pcieGBps || DEFAULTS.pcieGBps, 1, 128);
-  const occupancy = estimateOccupancy(blockDimX);
+  const warpSize = clampNumber(input.warpSize || DEFAULTS.warpSize, 16, 64);
+  const maxThreadsPerSM = clampNumber(
+    input.maxThreadsPerSM || DEFAULTS.maxThreadsPerSM,
+    blockDimX,
+    4_096
+  );
+  const maxBlocksPerSM = clampNumber(
+    input.maxBlocksPerSM || DEFAULTS.maxBlocksPerSM,
+    1,
+    64
+  );
+  const smCount = clampNumber(input.smCount || DEFAULTS.smCount, 1, 512);
+  const occupancy = estimateOccupancy(blockDimX, {
+    warpSize,
+    maxThreadsPerSM,
+    maxBlocksPerSM,
+  });
   const notes: string[] = [];
 
   if (blockDimX % 32 !== 0) {
@@ -93,6 +131,8 @@ export function simulate(input: SimInput): SimResult {
     const tH2D = msFor(h2d, pcie);
     const tKernel = msFor(device, hbm);
     const tD2H = msFor(d2h, pcie);
+    const totalDurationMs = tH2D + tKernel + tD2H;
+    const totalThreads = gridX * blockDimX;
     const timeline: SimEvent[] = [
       { name: "H2D", ts_ms: 0, dur_ms: tH2D, meta: { bytes: h2d } },
       {
@@ -112,6 +152,12 @@ export function simulate(input: SimInput): SimResult {
       blockDimX,
       occupancy,
       notes,
+      warpSize,
+      smCount,
+      maxThreadsPerSM,
+      totalThreads,
+      totalBlocks: gridX,
+      totalDurationMs,
     };
   }
 
@@ -122,6 +168,8 @@ export function simulate(input: SimInput): SimResult {
     const tH2D = msFor(h2d, pcie);
     const tKernel = msFor(device, hbm);
     const tD2H = msFor(d2h, pcie);
+    const totalDurationMs = tH2D + tKernel + tD2H;
+    const totalThreads = gridX * blockDimX;
     const timeline: SimEvent[] = [
       { name: "H2D", ts_ms: 0, dur_ms: tH2D, meta: { bytes: h2d } },
       {
@@ -143,6 +191,12 @@ export function simulate(input: SimInput): SimResult {
       blockDimX,
       occupancy,
       notes,
+      warpSize,
+      smCount,
+      maxThreadsPerSM,
+      totalThreads,
+      totalBlocks: gridX,
+      totalDurationMs,
     };
   }
 
@@ -156,6 +210,8 @@ export function simulate(input: SimInput): SimResult {
     const tH2D = msFor(h2d, pcie);
     const tKernel = msFor(device, hbm);
     const tD2H = msFor(d2h, pcie);
+    const totalDurationMs = tH2D + tKernel + tD2H;
+    const totalThreads = gridX * blockDimX;
     const timeline: SimEvent[] = [
       { name: "H2D", ts_ms: 0, dur_ms: tH2D, meta: { bytes: h2d } },
       {
@@ -181,6 +237,12 @@ export function simulate(input: SimInput): SimResult {
       blockDimX,
       occupancy,
       notes,
+      warpSize,
+      smCount,
+      maxThreadsPerSM,
+      totalThreads,
+      totalBlocks: gridX,
+      totalDurationMs,
     };
   }
 
@@ -196,6 +258,8 @@ export function simulate(input: SimInput): SimResult {
   const tKernel = msFor(device, hbm);
   const tD2H = msFor(d2h, pcie);
   const gridMatmul = Math.ceil(P / tile) * Math.ceil(M / tile);
+  const totalThreads = gridMatmul * blockDimX;
+  const totalDurationMs = tH2D + tKernel + tD2H;
   const timeline: SimEvent[] = [
     { name: "H2D", ts_ms: 0, dur_ms: tH2D, meta: { bytes: h2d } },
     {
@@ -217,5 +281,11 @@ export function simulate(input: SimInput): SimResult {
     blockDimX,
     occupancy,
     notes,
+    warpSize,
+    smCount,
+    maxThreadsPerSM,
+    totalThreads,
+    totalBlocks: gridMatmul,
+    totalDurationMs,
   };
 }
