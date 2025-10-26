@@ -29,7 +29,7 @@ interface GpuPreset {
   description: string;
 }
 
-const DEFAULT_N = 262_144; // fits grid/visual density at blockDim 256
+const DEFAULT_N = 1_048_576; // 1M elements keeps 3D grid dense but readable
 
 const KERNEL_OPTIONS: KernelOption[] = [
   {
@@ -292,6 +292,11 @@ export default function Visualizer() {
 
   const infoCardData = [
     {
+      title: "GPU preset",
+      value: activeGpu.name,
+      caption: `${activeGpu.hbmGBps} GB/s HBM · ${activeGpu.pcieGBps} GB/s PCIe/NVLink`,
+    },
+    {
       title: "Total threads",
       value: formatNumber(result.totalThreads, 1),
       caption: `${result.totalBlocks} blocks × ${result.blockDimX} threads`,
@@ -302,18 +307,51 @@ export default function Visualizer() {
       caption: `${activeGpu.smCount} SMs, warp size ${result.warpSize}`,
     },
     {
+      title: "Total duration",
+      value: `${result.totalDurationMs.toFixed(2)} ms`,
+      caption: "Simulated end-to-end latency",
+    },
+    {
       title: "Device bytes",
       value: formatBytes(result.bytes.device),
       caption: "Global + shared memory traffic",
     },
     {
-      title: "Total duration",
-      value: `${result.totalDurationMs.toFixed(2)} ms`,
-      caption: "Simulated end-to-end latency",
+      title: "Warps per block",
+      value: formatNumber(Math.ceil(result.blockDimX / result.warpSize)),
+      caption: `${result.blockDimX} threads ÷ warp size ${result.warpSize}`,
     },
   ];
 
   const kernelOption = KERNEL_OPTIONS.find((opt) => opt.value === kernel);
+
+  const maxWarpsPerSM = result.maxThreadsPerSM / result.warpSize;
+  const residentWarpsPerSM = maxWarpsPerSM * result.occupancy;
+  const totalResidentWarps = residentWarpsPerSM * activeGpu.smCount;
+
+  const gpuTour = [
+    {
+      heading: "Copy engines & PCIe/NVLink",
+      detail: `${formatBytes(result.bytes.h2d)} H2D + ${formatBytes(
+        result.bytes.d2h
+      )} D2H over ${activeGpu.pcieGBps} GB/s links. Streams can overlap transfers with compute to hide ${EVENT_DESCRIPTIONS["H2D"].toLowerCase()}.`,
+    },
+    {
+      heading: "HBM & L2 cache",
+      detail: `${formatBytes(result.bytes.device)} touches global memory. Modern parts deliver ${activeGpu.hbmGBps} GB/s; keep hot tiles in shared memory (≈${formatNumber(
+        Math.min(result.blockDimX * 4, 164_000)
+      )} B/SM) for latency hiding.`,
+    },
+    {
+      heading: "SMs, warps & occupancy",
+      detail: `${formatNumber(result.totalBlocks)} blocks scheduled across ${activeGpu.smCount} SMs. Occupancy ${formatPercent(
+        result.occupancy
+      )} ⇒ ≈${formatNumber(totalResidentWarps)} resident warps (${formatNumber(
+        residentWarpsPerSM,
+        2
+      )}/SM of max ${formatNumber(maxWarpsPerSM, 0)}).`,
+    },
+  ];
 
   return (
     <div className="flex flex-col gap-4">
@@ -323,8 +361,8 @@ export default function Visualizer() {
             CUDA Visualizer — Mode A (Simulation)
           </h2>
           <p className="text-sm text-neutral-400">
-            Select a GPU preset, tune launch parameters, and explore a fully rotatable
-            3D execution flow of grids, blocks, warps, and memory transfers.
+            Pick a GPU preset, spin the 3D schematic freely, and watch host memory, copy engines,
+            SMs, warps, and caches work together for each simulated kernel.
           </p>
         </div>
         <div className="flex gap-2">
@@ -398,7 +436,7 @@ export default function Visualizer() {
                 className="w-full rounded border border-neutral-700 bg-neutral-950/70 px-2 py-2 text-sm text-neutral-100 focus:border-sky-500 focus:outline-none"
               />
               <p className="text-xs text-neutral-500">
-                Clamped to one million elements so the 3D layout remains readable.
+                Defaulted to one million elements so the block/warp lattice fills the scene without overwhelming it.
               </p>
             </div>
 
@@ -456,7 +494,7 @@ export default function Visualizer() {
             )}
 
             {kernel === "transpose" && (
-              <div>
+              <div className="space-y-2">
                 <label className="block text-xs font-semibold uppercase tracking-wide text-neutral-500">
                   Transpose mode
                 </label>
@@ -470,6 +508,9 @@ export default function Visualizer() {
                   <option value="coalesced">Shared-memory tiled (coalesced)</option>
                   <option value="naive">Naive (strided)</option>
                 </select>
+                <p className="text-xs text-neutral-500">
+                  Compare coalesced shared-memory tiles against the naive layout to feel global memory penalties instantly.
+                </p>
               </div>
             )}
 
@@ -524,12 +565,53 @@ export default function Visualizer() {
               </label>
             </div>
 
-            <button
-              onClick={runSimulation}
-              className="w-full rounded bg-sky-500/80 py-2 text-sm font-semibold text-white shadow transition hover:bg-sky-500"
-            >
-              Run simulation
-            </button>
+            <div className="grid grid-cols-1 gap-2">
+              <button
+                onClick={runSimulation}
+                className="w-full rounded bg-sky-500/80 py-2 text-sm font-semibold text-white shadow transition hover:bg-sky-500"
+              >
+                Run simulation
+              </button>
+              <button
+                onClick={() => {
+                  if (rafRef.current) {
+                    cancelAnimationFrame(rafRef.current);
+                    rafRef.current = undefined;
+                  }
+                  setHBM(activeGpu.hbmGBps);
+                  setPCIE(activeGpu.pcieGBps);
+                  setBlockDim(256);
+                  setTile(16);
+                  setM(512);
+                  setK(512);
+                  setN(DEFAULT_N);
+                  setResult(
+                    simulate({
+                      kernel,
+                      N: DEFAULT_N,
+                      M: 512,
+                      K: 512,
+                      blockDimX: 256,
+                      tile: 16,
+                      hbmGBps: activeGpu.hbmGBps,
+                      pcieGBps: activeGpu.pcieGBps,
+                      transposeMode: "coalesced",
+                      maxThreadsPerSM: activeGpu.maxThreadsPerSM,
+                      maxBlocksPerSM: activeGpu.maxBlocksPerSM,
+                      warpSize: activeGpu.warpSize,
+                      smCount: activeGpu.smCount,
+                    })
+                  );
+                  setTransposeMode("coalesced");
+                  setIsAnimating(false);
+                  setAnimationProgress(0);
+                  requestAnimationFrame(() => setIsAnimating(true));
+                }}
+                className="w-full rounded border border-sky-700/60 bg-transparent py-2 text-sm font-semibold text-sky-300 transition hover:border-sky-500 hover:text-sky-200"
+              >
+                Reset to GPU defaults
+              </button>
+            </div>
           </aside>
         )}
 
@@ -543,7 +625,7 @@ export default function Visualizer() {
             />
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
             {infoCardData.map((card) => (
               <div
                 key={card.title}
@@ -621,6 +703,23 @@ export default function Visualizer() {
                 </ul>
               </div>
             )}
+          </div>
+
+          <div className="rounded-lg border border-neutral-800 bg-neutral-900/60">
+            <div className="border-b border-neutral-800 px-4 py-2 text-sm font-semibold uppercase tracking-wide text-neutral-400">
+              GPU component tour
+            </div>
+            <div className="space-y-3 px-4 py-4 text-sm text-neutral-300">
+              {gpuTour.map((item) => (
+                <div key={item.heading} className="space-y-1">
+                  <p className="font-semibold text-neutral-100">{item.heading}</p>
+                  <p className="text-xs leading-relaxed text-neutral-400">{item.detail}</p>
+                </div>
+              ))}
+              <p className="text-xs text-neutral-500">
+                Tip: drag to orbit, scroll to zoom, and right-click to pan for a 360° walkthrough of the GPU schematic.
+              </p>
+            </div>
           </div>
         </section>
 
