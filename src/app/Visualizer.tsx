@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { KernelSnippets } from "./components/KernelSnippets";
 import { GpuScene } from "./components/GpuScene";
+import { GpuScene2D } from "./components/GpuScene2D";
 import {
   type Kernel,
   type SimEvent,
@@ -184,6 +185,7 @@ export default function Visualizer() {
 
   const [showInputs, setShowInputs] = useState(true);
   const [showCode, setShowCode] = useState(true);
+  const [viewMode, setViewMode] = useState<"2d" | "3d">("3d");
 
   const totalDuration = useMemo(() => {
     if (result.totalDurationMs > 0) {
@@ -361,11 +363,34 @@ export default function Visualizer() {
             CUDA Visualizer — Mode A (Simulation)
           </h2>
           <p className="text-sm text-neutral-400">
-            Pick a GPU preset, spin the 3D schematic freely, and watch host memory, copy engines,
-            SMs, warps, and caches work together for each simulated kernel.
+            Pick a GPU preset, choose between a layered 2D schematic or an orbitable 3D tour, and
+            watch host memory, copy engines, SMs, warps, and caches work together for each simulated
+            kernel.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex overflow-hidden rounded border border-neutral-700">
+            <button
+              onClick={() => setViewMode("2d")}
+              className={`px-3 py-1 text-sm transition ${
+                viewMode === "2d"
+                  ? "bg-sky-500/20 text-sky-200"
+                  : "text-neutral-200 hover:bg-neutral-800/60"
+              }`}
+            >
+              2D view
+            </button>
+            <button
+              onClick={() => setViewMode("3d")}
+              className={`px-3 py-1 text-sm transition ${
+                viewMode === "3d"
+                  ? "bg-sky-500/20 text-sky-200"
+                  : "text-neutral-200 hover:bg-neutral-800/60"
+              }`}
+            >
+              3D view
+            </button>
+          </div>
           <button
             onClick={() => setShowInputs((prev) => !prev)}
             className="rounded border border-neutral-700 px-3 py-1 text-sm text-neutral-200 transition hover:border-neutral-500"
@@ -617,12 +642,21 @@ export default function Visualizer() {
 
         <section className="flex-1 space-y-4">
           <div className="overflow-hidden rounded-xl border border-neutral-800 bg-neutral-950/70">
-            <GpuScene
-              result={result}
-              kernelProgress={kernelProgress}
-              activeStage={activeStage}
-              stageProgress={stageProgress}
-            />
+            {viewMode === "3d" ? (
+              <GpuScene
+                result={result}
+                kernelProgress={kernelProgress}
+                activeStage={activeStage}
+                stageProgress={stageProgress}
+              />
+            ) : (
+              <GpuScene2D
+                result={result}
+                kernelProgress={kernelProgress}
+                activeStage={activeStage}
+                stageProgress={stageProgress}
+              />
+            )}
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
