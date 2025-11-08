@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: todo-api
+  namespace: app
+  labels:
+    app.kubernetes.io/name: todo-api
+    app.kubernetes.io/part-of: todos
+spec:
+  replicas: 2
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: todo-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: todo-api
+        app.kubernetes.io/part-of: todos
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "3000"
+        prometheus.io/path: /metrics
+        app.git.sha: "${GIT_SHA}"
+    spec:
+      serviceAccountName: todo-api
+      securityContext:
+        fsGroup: 1000
+      containers:
+        - name: api
+          image: ghcr.io/example/vmss-node:latest@sha256:0000000000000000000000000000000000000000000000000000000000000000
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+              name: http
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: PORT
+              value: "3000"
+            - name: AWS_REGION
+              valueFrom:
+                configMapKeyRef:
+                  name: todo-api-config
+                  key: awsRegion
+            - name: GIT_SHA
+              value: "${GIT_SHA}"
+          envFrom:
+            - secretRef:
+                name: todo-api-secrets
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 10
+            initialDelaySeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 30
+            initialDelaySeconds: 10
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+      tolerations: []
+      terminationGracePeriodSeconds: 30

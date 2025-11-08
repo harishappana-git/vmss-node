@@ -1,0 +1,18 @@
+{
+  "env": {
+    "commonjs": true,
+    "es2021": true,
+    "node": true,
+    "jest": true
+  },
+  "extends": ["eslint:recommended"],
+  "plugins": ["jest"],
+  "rules": {
+    "jest/expect-expect": "warn",
+    "jest/no-disabled-tests": "warn",
+    "jest/no-identical-title": "error",
+    "jest/prefer-to-have-length": "warn",
+    "jest/valid-describe": "error",
+    "jest/valid-expect": "error"
+  }
+}
