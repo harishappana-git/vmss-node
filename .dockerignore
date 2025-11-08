@@ -1,0 +1,11 @@
+node_modules
+npm-debug.log
+Dockerfile
+dist
+coverage
+.git
+.gitignore
+.github
+infra
+k8s
+docs
