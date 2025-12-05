@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spots-api
+  namespace: hazard-spots
+  labels:
+    app: spots-api
+    component: backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: spots-api
+  template:
+    metadata:
+      labels:
+        app: spots-api
+        component: backend
+    spec:
+      containers:
+        - name: spots-api
+          image: nicholasjackson/fake-service:v0.26.2
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: LISTEN_ADDR
+              valueFrom:
+                configMapKeyRef:
+                  name: spots-api-config
+                  key: LISTEN_ADDR
+            - name: MESSAGE
+              valueFrom:
+                configMapKeyRef:
+                  name: spots-api-config
+                  key: MESSAGE
+            - name: NAME
+              value: "spots-api"
+            - name: DB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: spots-api-config
+                  key: DB_HOST
+            - name: DB_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: spots-api-config
+                  key: DB_PORT
+            - name: DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: spots-api-config
+                  key: DB_NAME
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: spots-secrets
+                  key: POSTGRES_USER
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: spots-secrets
+                  key: POSTGRES_PASSWORD
+            - name: AUTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: spots-secrets
+                  key: API_TOKEN
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 150m
+              memory: 128Mi
+            limits:
+              cpu: 400m
+              memory: 256Mi

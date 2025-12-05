@@ -1,0 +1,14 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: haz-premium-disk
+  labels:
+    project: hazard-spots
+provisioner: disk.csi.azure.com
+parameters:
+  skuname: Premium_LRS
+  kind: Managed
+  cachingmode: ReadOnly
+reclaimPolicy: Retain
+allowVolumeExpansion: true
+volumeBindingMode: WaitForFirstConsumer

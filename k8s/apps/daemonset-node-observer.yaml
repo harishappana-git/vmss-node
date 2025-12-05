@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: node-observer
+  namespace: hazard-spots
+  labels:
+    app: node-observer
+    component: telemetry
+spec:
+  selector:
+    matchLabels:
+      app: node-observer
+  template:
+    metadata:
+      labels:
+        app: node-observer
+        component: telemetry
+    spec:
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: node-exporter
+          image: quay.io/prometheus/node-exporter:v1.6.1
+          imagePullPolicy: IfNotPresent
+          args:
+            - "--path.rootfs=/host"
+          ports:
+            - containerPort: 9100
+              name: metrics
+          volumeMounts:
+            - name: rootfs
+              mountPath: /host
+              readOnly: true
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: metrics
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: metrics
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+      volumes:
+        - name: rootfs
+          hostPath:
+            path: /
+            type: Directory
