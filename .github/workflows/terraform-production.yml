@@ -1,0 +1,84 @@
+name: Terraform Production
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/terraform-production.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/terraform-production.yml'
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: terraform
+
+    env:
+      TF_VAR_vm_admin_password: ${{ secrets.TF_VAR_vm_admin_password }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.6
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          enable-AzPSSession: false
+
+      - name: Export Terraform Azure environment variables
+        env:
+          AZURE_CREDENTIALS_JSON: ${{ secrets.AZURE_CREDENTIALS }}
+        run: |
+          cat <<'CREDS' > creds.json
+          ${AZURE_CREDENTIALS_JSON}
+          CREDS
+          echo "ARM_CLIENT_ID=$(jq -r '.clientId' creds.json)" >> "$GITHUB_ENV"
+          echo "ARM_CLIENT_SECRET=$(jq -r '.clientSecret' creds.json)" >> "$GITHUB_ENV"
+          echo "ARM_TENANT_ID=$(jq -r '.tenantId' creds.json)" >> "$GITHUB_ENV"
+          echo "ARM_SUBSCRIPTION_ID=$(jq -r '.subscriptionId' creds.json)" >> "$GITHUB_ENV"
+          rm -f creds.json
+
+      - name: Configure backend file
+        run: |
+          cat <<'CONFIG' > backend.hcl
+          resource_group_name  = "${{ secrets.TF_BACKEND_RESOURCE_GROUP }}"
+          storage_account_name = "${{ secrets.TF_BACKEND_STORAGE_ACCOUNT }}"
+          container_name       = "${{ secrets.TF_BACKEND_CONTAINER }}"
+          key                  = "${{ secrets.TF_BACKEND_STATE_KEY }}"
+          CONFIG
+
+      - name: Terraform Init
+        run: terraform init -backend-config=backend.hcl
+
+      - name: Terraform Format
+        run: terraform fmt -check
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Plan
+        if: github.event_name == 'pull_request'
+        run: terraform plan -input=false
+
+      - name: Terraform Apply
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: terraform apply -auto-approve -input=false
